@@ -33,6 +33,7 @@
 #define QGCAPPLICATION_H
 
 #include <QApplication>
+#include <QTimer>
 
 #include "LinkConfiguration.h"
 
@@ -95,8 +96,19 @@ public:
     /// Set the current UI style
     void setStyle(bool styleIsDark);
     
-    /// Disconnects the current link and waits for the specified number of seconds before reconnecting.
-    void reconnectAfterWait(int waitSeconds);
+    /// Used to report a missing Parameter. Warning will be displayed to user. Method may be called
+    /// multiple times.
+    void reportMissingParameter(int componentId, const QString& name);
+
+    /// Show a non-modal message to the user
+    void showToolBarMessage(const QString& message);
+
+	/// @return true: Fake ui into showing mobile interface
+	bool fakeMobile(void) { return _fakeMobile; }
+    
+#ifdef QT_DEBUG
+    bool testHighDPI(void) { return _testHighDPI; }
+#endif
     
 public slots:
     /// You can connect to this slot to show an information message box from a different thread.
@@ -138,7 +150,7 @@ public:
     static QGCApplication*  _app;   ///< Our own singleton. Should be reference directly by qgcApp
     
 private slots:
-    void _reconnect(void);
+    void _missingParamsDisplay(void);
     
 private:
     void _createSingletons(void);
@@ -161,8 +173,16 @@ private:
     static const char*  _lightStyleFile;
     bool                _styleIsDark;      ///< true: dark style, false: light style
     
-    LinkConfiguration* _reconnectLinkConfig;    ///< Configuration to reconnect for reconnectAfterWai
+    static const int    _missingParamsDelayedDisplayTimerTimeout = 1000;  ///< Timeout to wait for next missing fact to come in before display
+    QTimer              _missingParamsDelayedDisplayTimer;                ///< Timer use to delay missing fact display
+    QStringList         _missingParams;                                  ///< List of missing facts to be displayed
+
+	bool				_fakeMobile;	///< true: Fake ui into displaying mobile interface
     
+#ifdef QT_DEBUG
+    bool _testHighDPI;  ///< true: double fonts sizes for simulating high dpi devices
+#endif
+
     /// Unit Test have access to creating and destroying singletons
     friend class UnitTest;
 };

@@ -51,7 +51,7 @@ QString SensorsComponent::description(void) const
 
 QString SensorsComponent::iconResource(void) const
 {
-    return "SensorsComponentIcon.png";
+    return "/qmlimages/SensorsComponentIcon.png";
 }
 
 bool SensorsComponent::requiresSetup(void) const
@@ -62,7 +62,7 @@ bool SensorsComponent::requiresSetup(void) const
 bool SensorsComponent::setupComplete(void) const
 {
     foreach(QString triggerParam, setupCompleteChangedTriggerList()) {
-        if (_autopilot->getParameterFact(triggerParam)->value().toFloat() == 0.0f) {
+        if (_autopilot->getParameterFact(FactSystem::defaultComponentId, triggerParam)->value().toFloat() == 0.0f) {
             return false;
         }
     }
@@ -87,7 +87,10 @@ QStringList SensorsComponent::setupCompleteChangedTriggerList(void) const
     QStringList triggers;
     
     triggers << "CAL_MAG0_ID" << "CAL_GYRO0_ID" << "CAL_ACC0_ID";
-    if (_uas->getSystemType() == MAV_TYPE_FIXED_WING) {
+    if (_uas->getSystemType() == MAV_TYPE_FIXED_WING ||
+        _uas->getSystemType() == MAV_TYPE_VTOL_DUOROTOR ||
+        _uas->getSystemType() == MAV_TYPE_VTOL_QUADROTOR ||
+        _uas->getSystemType() == MAV_TYPE_VTOL_TILTROTOR) {
         triggers << "SENS_DPRES_OFF";
     }
     
@@ -103,27 +106,19 @@ QStringList SensorsComponent::paramFilterList(void) const
     return list;
 }
 
-QWidget* SensorsComponent::setupWidget(void) const
+QUrl SensorsComponent::setupSource(void) const
 {
-    QGCQmlWidgetHolder* holder = new QGCQmlWidgetHolder();
-    Q_CHECK_PTR(holder);
-    
-    holder->setAutoPilot(_autopilot);
-    
-    SensorsComponentController* controller = new SensorsComponentController(_autopilot, holder);
-    holder->setContextPropertyObject("controller", controller);
-    
-    holder->setSource(QUrl::fromUserInput("qrc:/qml/SensorsComponent.qml"));
-    
-    return holder;
+    return QUrl::fromUserInput("qrc:/qml/SensorsComponent.qml");
 }
 
 QUrl SensorsComponent::summaryQmlSource(void) const
 {
     QString summaryQml;
     
-    qDebug() << _uas->getSystemType();
-    if (_uas->getSystemType() == MAV_TYPE_FIXED_WING) {
+    if (_uas->getSystemType() == MAV_TYPE_FIXED_WING ||
+        _uas->getSystemType() == MAV_TYPE_VTOL_DUOROTOR ||
+        _uas->getSystemType() == MAV_TYPE_VTOL_QUADROTOR ||
+        _uas->getSystemType() == MAV_TYPE_VTOL_TILTROTOR) {
         summaryQml = "qrc:/qml/SensorsComponentSummaryFixedWing.qml";
     } else {
         summaryQml = "qrc:/qml/SensorsComponentSummary.qml";

@@ -39,19 +39,19 @@ public:
 
     ///  The link types supported by QGC
     enum {
+#ifndef __ios__
         TypeSerial,     ///< Serial Link
+#endif
         TypeUdp,        ///< UDP Link
         TypeTcp,        ///< TCP Link
-        // TODO Below is not yet implemented
 #if 0
-        TypeSimulation, ///< Simulation Link
+        // TODO Below is not yet implemented
         TypeForwarding, ///< Forwarding Link
         TypeXbee,       ///< XBee Proprietary Link
         TypeOpal,       ///< Opal-RT Link
 #endif
-#ifdef UNITTEST_BUILD
         TypeMock,       ///< Mock Link for Unitesting
-#endif
+        TypeLogReplay,
         TypeLast        // Last type value (type >= TypeLast == invalid)
     };
 

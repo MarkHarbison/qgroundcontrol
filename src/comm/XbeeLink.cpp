@@ -2,7 +2,6 @@
 #include <QThread>
 #include <QMutex>
 #include <MG.h>
-#include <configuration.h>
 #include<string>
 #include "XbeeLink.h"
 
@@ -184,9 +183,7 @@ void XbeeLink::writeBytes(const char *bytes, qint64 length)  // TO DO: delete th
 	}
 	if(!xbee_nsenddata(this->m_xbeeCon,data,length)) // return value of 0 is successful written
 	{
-        // Log the amount and time written out for future data rate calculations.
-        QMutexLocker dataRateLocker(&dataRateMutex);
-        logDataRateToBuffer(outDataWriteAmounts, outDataWriteTimes, &outDataIndex, length, QDateTime::currentMSecsSinceEpoch());
+		_logOutputDataRate(length, QDateTime::currentMSecsSinceEpoch());
 	}
 	else
 	{
@@ -207,11 +204,8 @@ void XbeeLink::readBytes()
 			data.push_back(xbeePkt->data[i]);
         }
 
-        emit bytesReceived(this, data);
-
-        // Log the amount and time received for future data rate calculations.
-        QMutexLocker dataRateLocker(&dataRateMutex);
-        logDataRateToBuffer(inDataWriteAmounts, inDataWriteTimes, &inDataIndex, data.length(), QDateTime::currentMSecsSinceEpoch());
+		_logInputDataRate(data.length(), QDateTime::currentMSecsSinceEpoch());
+		emit bytesReceived(this, data);
 	}
 }
 

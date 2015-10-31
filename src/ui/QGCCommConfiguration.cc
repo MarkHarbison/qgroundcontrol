@@ -30,10 +30,14 @@ This file is part of the QGROUNDCONTROL project
 
 #include <QPushButton>
 
+#ifndef __ios__
 #include "SerialLink.h"
 #include "SerialConfigurationWindow.h"
+#endif
 #include "QGCUDPLinkConfiguration.h"
 #include "QGCTCPLinkConfiguration.h"
+#include "MockLinkConfiguration.h"
+#include "LogReplayLinkConfigurationWidget.h"
 #include "QGCCommConfiguration.h"
 #include "ui_QGCCommConfiguration.h"
 
@@ -45,10 +49,13 @@ QGCCommConfiguration::QGCCommConfiguration(QWidget *parent, LinkConfiguration *c
     // Add link types
     _config = config;
     _ui->typeCombo->addItem(tr("Select Type"),  LinkConfiguration::TypeLast);
+#ifndef __ios__
     _ui->typeCombo->addItem(tr("Serial"),       LinkConfiguration::TypeSerial);
+#endif
     _ui->typeCombo->addItem(tr("UDP"),          LinkConfiguration::TypeUdp);
     _ui->typeCombo->addItem(tr("TCP"),          LinkConfiguration::TypeTcp);
-#ifdef UNITTEST_BUILD
+    _ui->typeCombo->addItem(tr("Log replay"),   LinkConfiguration::TypeLogReplay);
+#ifdef QT_DEBUG
     _ui->typeCombo->addItem(tr("Mock"),         LinkConfiguration::TypeMock);
 #endif
 
@@ -113,6 +120,7 @@ void QGCCommConfiguration::_loadTypeConfigWidget(int type)
 {
     Q_ASSERT(_config != NULL);
     switch(type) {
+#ifndef __ios__
         case LinkConfiguration::TypeSerial: {
             QWidget* conf = new SerialConfigurationWindow((SerialConfiguration*)_config, this);
             _ui->linkScrollArea->setWidget(conf);
@@ -120,6 +128,7 @@ void QGCCommConfiguration::_loadTypeConfigWidget(int type)
             _ui->typeCombo->setCurrentIndex(_ui->typeCombo->findData(LinkConfiguration::TypeSerial));
         }
         break;
+#endif
         case LinkConfiguration::TypeUdp: {
             QWidget* conf = new QGCUDPLinkConfiguration((UDPConfiguration*)_config, this);
             _ui->linkScrollArea->setWidget(conf);
@@ -134,9 +143,17 @@ void QGCCommConfiguration::_loadTypeConfigWidget(int type)
             _ui->typeCombo->setCurrentIndex(_ui->typeCombo->findData(LinkConfiguration::TypeTcp));
         }
         break;
-#ifdef UNITTEST_BUILD
+        case LinkConfiguration::TypeLogReplay: {
+            QWidget* conf = new LogReplayLinkConfigurationWidget((LogReplayLinkConfiguration*)_config, this);
+            _ui->linkScrollArea->setWidget(conf);
+            _ui->linkGroupBox->setTitle("Log Replay");
+            _ui->typeCombo->setCurrentIndex(_ui->typeCombo->findData(LinkConfiguration::TypeLogReplay));
+        }
+            break;
+#ifdef QT_DEBUG
         case LinkConfiguration::TypeMock: {
-            _ui->linkScrollArea->setWidget(NULL);
+            QWidget* conf = new MockLinkConfiguration((MockConfiguration*)_config, this);
+            _ui->linkScrollArea->setWidget(conf);
             _ui->linkGroupBox->setTitle(tr("Mock Link"));
             _ui->typeCombo->setCurrentIndex(_ui->typeCombo->findData(LinkConfiguration::TypeMock));
         }
@@ -184,4 +201,7 @@ void QGCCommConfiguration::on_nameEdit_textEdited(const QString &arg1)
 {
     Q_UNUSED(arg1);
     _updateUI();
+    if(_config) {
+        _config->setDynamic(false);
+    }
 }

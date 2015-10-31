@@ -25,61 +25,15 @@
 ///     @author Don Gagne <don@thegagnes.com>
 
 #include "GenericAutoPilotPlugin.h"
+#include "FirmwarePlugin/Generic/GenericFirmwarePlugin.h"  // FIXME: Hack
 
-GenericAutoPilotPlugin::GenericAutoPilotPlugin(UASInterface* uas, QObject* parent) :
-    AutoPilotPlugin(uas, parent)
+GenericAutoPilotPlugin::GenericAutoPilotPlugin(Vehicle* vehicle, QObject* parent) :
+    AutoPilotPlugin(vehicle, parent)
 {
-    Q_ASSERT(uas);
-    
-    _parameterFacts = new GenericParameterFacts(uas, this);
-    Q_CHECK_PTR(_parameterFacts);
-    
-    connect(_parameterFacts, &GenericParameterFacts::parametersReady, this, &GenericAutoPilotPlugin::_parametersReady);
-}
+    Q_ASSERT(vehicle);
 
-QList<AutoPilotPluginManager::FullMode_t> GenericAutoPilotPlugin::getModes(void)
-{
-    AutoPilotPluginManager::FullMode_t fullMode;
-    QList<AutoPilotPluginManager::FullMode_t> modeList;
-
-    fullMode.customMode = 0;
-    
-    fullMode.baseMode = MAV_MODE_FLAG_MANUAL_INPUT_ENABLED;
-    modeList << fullMode;
-    
-    fullMode.baseMode = MAV_MODE_FLAG_MANUAL_INPUT_ENABLED | MAV_MODE_FLAG_STABILIZE_ENABLED;
-    modeList << fullMode;
-    
-    fullMode.baseMode = MAV_MODE_FLAG_MANUAL_INPUT_ENABLED | MAV_MODE_FLAG_STABILIZE_ENABLED | MAV_MODE_FLAG_GUIDED_ENABLED;
-    modeList << fullMode;
-
-    fullMode.baseMode = MAV_MODE_FLAG_AUTO_ENABLED | MAV_MODE_FLAG_STABILIZE_ENABLED | MAV_MODE_FLAG_GUIDED_ENABLED;
-    modeList << fullMode;
-    
-    return modeList;
-}
-
-QString GenericAutoPilotPlugin::getShortModeText(uint8_t baseMode, uint32_t customMode)
-{
-    Q_UNUSED(customMode);
-    
-    QString mode;
-    
-    // use base_mode - not autopilot-specific
-    if (baseMode == 0) {
-        mode = "|PREFLIGHT";
-    } else if (baseMode & MAV_MODE_FLAG_DECODE_POSITION_AUTO) {
-        mode = "|AUTO";
-    } else if (baseMode & MAV_MODE_FLAG_DECODE_POSITION_MANUAL) {
-        mode = "|MANUAL";
-        if (baseMode & MAV_MODE_FLAG_DECODE_POSITION_GUIDED) {
-            mode += "|GUIDED";
-        } else if (baseMode & MAV_MODE_FLAG_DECODE_POSITION_STABILIZE) {
-            mode += "|STABILIZED";
-        }
-    }
-    
-    return mode;
+    // This kicks off parameter load
+    _firmwarePlugin->getParameterLoader(this, vehicle);
 }
 
 void GenericAutoPilotPlugin::clearStaticData(void)
@@ -94,8 +48,11 @@ const QVariantList& GenericAutoPilotPlugin::vehicleComponents(void)
     return emptyList;
 }
 
-void GenericAutoPilotPlugin::_parametersReady(void)
+/// This will perform various checks prior to signalling that the plug in ready
+void GenericAutoPilotPlugin::_parametersReadyPreChecks(bool missingParameters)
 {
-    _pluginReady = true;
-    emit pluginReadyChanged(_pluginReady);
+    _parametersReady = true;
+    _missingParameters = missingParameters;
+    emit missingParametersChanged(_missingParameters);
+    emit parametersReadyChanged(_parametersReady);
 }

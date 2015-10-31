@@ -8,18 +8,17 @@ import QGroundControl.ScreenTools 1.0
 
 ComboBox {
     property var __qgcPal: QGCPalette { colorGroupEnabled: enabled }
-    property ScreenTools __screenTools: ScreenTools { }
     property bool __showHighlight: pressed | hovered
 
     style: ComboBoxStyle {
-        font.pointSize: __screenTools.defaultFontPointSize
+        font.pixelSize: ScreenTools.defaultFontPixelSize
         textColor: __showHighlight ?
                     control.__qgcPal.buttonHighlightText :
                     control.__qgcPal.buttonText
 
         background: Item {
             implicitWidth: Math.round(TextSingleton.implicitHeight * 4.5)
-            implicitHeight: Math.max(25, Math.round(TextSingleton.implicitHeight * 1.2))
+            implicitHeight: ScreenTools.isMobile ? ScreenTools.defaultFontPixelHeight * 3 * 0.75 : Math.max(25, Math.round(TextSingleton.implicitHeight * 1.2))
 
             Rectangle {
                 anchors.fill: parent
@@ -31,7 +30,7 @@ ComboBox {
             Image {
                 id: imageItem
                 visible: control.menu !== null
-                source: "arrow-down.png"
+                source: "/qmlimages/arrow-down.png"
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.right: parent.right
                 anchors.rightMargin: dropDownButtonWidth / 2

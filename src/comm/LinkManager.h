@@ -33,21 +33,25 @@ This file is part of the PIXHAWK project
 
 #include "LinkConfiguration.h"
 #include "LinkInterface.h"
+#include "QGCLoggingCategory.h"
 
 // Links
+#ifndef __ios__
 #include "SerialLink.h"
+#endif
 #include "UDPLink.h"
 #include "TCPLink.h"
+#include "LogReplayLink.h"
 
-#ifdef UNITTEST_BUILD
-#ifndef __android__
+#ifdef QT_DEBUG
 #include "MockLink.h"
-#endif
 #endif
 
 #include "ProtocolInterface.h"
 #include "QGCSingleton.h"
 #include "MAVLinkProtocol.h"
+
+Q_DECLARE_LOGGING_CATEGORY(LinkManagerLog)
 
 class LinkManagerTest;
 
@@ -96,8 +100,9 @@ public:
     const QList<LinkInterface*> getLinks();
 
     // Returns list of all serial links
+#ifndef __ios__
     const QList<SerialLink*> getSerialLinks();
-
+#endif
     /// Sets the flag to suspend the all new connections
     ///     @param reason User visible reason to suspend connections
     void setConnectionsSuspended(QString reason);
@@ -106,6 +111,7 @@ public:
     void setConnectionsAllowed(void) { _connectionsSuspended = false; }
 
     /// Creates, connects (and adds) a link  based on the given configuration instance.
+    /// Link takes ownership of config.
     LinkInterface* createConnectedLink(LinkConfiguration* config);
 
     /// Creates, connects (and adds) a link  based on the given configuration name.
@@ -158,8 +164,9 @@ private:
 
     bool _connectionsSuspendedMsg(void);
     void _updateConfigurationList(void);
+#ifndef __ios__
     SerialConfiguration* _findSerialConfiguration(const QString& portName);
-
+#endif
     QList<LinkConfiguration*>   _linkConfigurations;    ///< List of configured links
     
     /// List of available links kept as QSharedPointers. We use QSharedPointer since
@@ -173,8 +180,9 @@ private:
     bool    _configurationsLoaded;                      ///< true: Link configurations have been loaded
     bool    _connectionsSuspended;                      ///< true: all new connections should not be allowed
     QString _connectionsSuspendedReason;                ///< User visible reason for suspension
+#ifndef __ios__
     QTimer  _portListTimer;
-    
+#endif
     uint32_t _mavlinkChannelsUsedBitMask;
     
     SharedLinkInterface _nullSharedLink;

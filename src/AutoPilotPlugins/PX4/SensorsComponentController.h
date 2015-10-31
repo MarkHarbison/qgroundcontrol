@@ -31,15 +31,18 @@
 #include <QQuickItem>
 
 #include "UASInterface.h"
-#include "AutoPilotPlugin.h"
+#include "FactPanelController.h"
+#include "QGCLoggingCategory.h"
+
+Q_DECLARE_LOGGING_CATEGORY(SensorsComponentControllerLog)
 
 /// Sensors Component MVC Controller for SensorsComponent.qml.
-class SensorsComponentController : public QObject
+class SensorsComponentController : public FactPanelController
 {
     Q_OBJECT
     
 public:
-    SensorsComponentController(AutoPilotPlugin* autopilot, QObject* parent = NULL);
+    SensorsComponentController(void);
     
     Q_PROPERTY(bool fixedWing READ fixedWing CONSTANT)
     
@@ -50,6 +53,7 @@ public:
     Q_PROPERTY(QQuickItem* gyroButton MEMBER _gyroButton)
     Q_PROPERTY(QQuickItem* accelButton MEMBER _accelButton)
     Q_PROPERTY(QQuickItem* airspeedButton MEMBER _airspeedButton)
+    Q_PROPERTY(QQuickItem* levelButton MEMBER _levelButton)
     Q_PROPERTY(QQuickItem* cancelButton MEMBER _cancelButton)
     Q_PROPERTY(QQuickItem* orientationCalAreaHelpText MEMBER _orientationCalAreaHelpText)
     
@@ -77,14 +81,18 @@ public:
     Q_PROPERTY(bool orientationCalTailDownSideInProgress MEMBER _orientationCalTailDownSideInProgress NOTIFY orientationCalSidesInProgressChanged)
     
     Q_PROPERTY(bool orientationCalDownSideRotate MEMBER _orientationCalDownSideRotate NOTIFY orientationCalSidesRotateChanged)
+    Q_PROPERTY(bool orientationCalUpsideDownSideRotate MEMBER _orientationCalUpsideDownSideRotate NOTIFY orientationCalSidesRotateChanged)
     Q_PROPERTY(bool orientationCalLeftSideRotate MEMBER _orientationCalLeftSideRotate NOTIFY orientationCalSidesRotateChanged)
+    Q_PROPERTY(bool orientationCalRightSideRotate MEMBER _orientationCalRightSideRotate NOTIFY orientationCalSidesRotateChanged)
     Q_PROPERTY(bool orientationCalNoseDownSideRotate MEMBER _orientationCalNoseDownSideRotate NOTIFY orientationCalSidesRotateChanged)
+    Q_PROPERTY(bool orientationCalTailDownSideRotate MEMBER _orientationCalTailDownSideRotate NOTIFY orientationCalSidesRotateChanged)
     
     Q_PROPERTY(bool waitingForCancel MEMBER _waitingForCancel NOTIFY waitingForCancelChanged)
     
     Q_INVOKABLE void calibrateCompass(void);
     Q_INVOKABLE void calibrateGyro(void);
     Q_INVOKABLE void calibrateAccel(void);
+    Q_INVOKABLE void calibrateLevel(void);
     Q_INVOKABLE void calibrateAirspeed(void);
     Q_INVOKABLE void cancelCalibration(void);
     
@@ -110,6 +118,7 @@ private:
     void _appendStatusLog(const QString& text);
     void _refreshParams(void);
     void _hideAllCalAreas(void);
+    void _resetInternalState(void);
     
     enum StopCalibrationCode {
         StopCalibrationSuccess,
@@ -126,15 +135,12 @@ private:
     QQuickItem* _gyroButton;
     QQuickItem* _accelButton;
     QQuickItem* _airspeedButton;
+    QQuickItem* _levelButton;
     QQuickItem* _cancelButton;
     QQuickItem* _orientationCalAreaHelpText;
     
     bool _showGyroCalArea;
     bool _showOrientationCalArea;
-    
-    bool _showCompass0;
-    bool _showCompass1;
-    bool _showCompass2;
     
     bool _gyroCalInProgress;
     bool _magCalInProgress;
@@ -162,14 +168,16 @@ private:
     bool _orientationCalTailDownSideInProgress;
     
     bool _orientationCalDownSideRotate;
+    bool _orientationCalUpsideDownSideRotate;
     bool _orientationCalLeftSideRotate;
+    bool _orientationCalRightSideRotate;
     bool _orientationCalNoseDownSideRotate;
+    bool _orientationCalTailDownSideRotate;
     
     bool _unknownFirmwareVersion;
     bool _waitingForCancel;
     
-    AutoPilotPlugin*    _autopilot;
-    UASInterface*       _uas;
+    static const int _supportedFirmwareCalVersion = 2;
 };
 
 #endif

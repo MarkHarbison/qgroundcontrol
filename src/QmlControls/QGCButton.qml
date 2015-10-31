@@ -7,8 +7,9 @@ import QGroundControl.Palette 1.0
 import QGroundControl.ScreenTools 1.0
 
 Button {
-    // primary: true - this is the primary button for this group of buttons
-    property bool primary: false
+
+    property bool primary: false    // primary: true - primary button for a group of buttons
+    property bool showBorder: false ///< true: draw border around button
 
     property var __qgcPal: QGCPalette { colorGroupEnabled: enabled }
 
@@ -23,17 +24,15 @@ Button {
     property int __lastGlobalMouseX: 0
     property int __lastGlobalMouseY: 0
 
-    property ScreenTools __screenTools: ScreenTools { }
-
     Connections {
         target: __behavior
         onMouseXChanged: {
-            __lastGlobalMouseX = __screenTools.mouseX
-            __lastGlobalMouseY = __screenTools.mouseY
+            __lastGlobalMouseX = ScreenTools.mouseX()
+            __lastGlobalMouseY = ScreenTools.mouseY()
         }
         onMouseYChanged: {
-            __lastGlobalMouseX = __screenTools.mouseX
-            __lastGlobalMouseY = __screenTools.mouseY
+            __lastGlobalMouseX = ScreenTools.mouseX()
+            __lastGlobalMouseY = ScreenTools.mouseY()
         }
         onEntered: { __forceHoverOff; false; hoverTimer.start() }
         onExited: { __forceHoverOff; false; hoverTimer.stop() }
@@ -45,7 +44,7 @@ Button {
         repeat:     true
 
         onTriggered: {
-            if (__lastGlobalMouseX != __screenTools.mouseX || __lastGlobalMouseY != __screenTools.mouseY) {
+            if (__lastGlobalMouseX != ScreenTools.mouseX() || __lastGlobalMouseY != ScreenTools.mouseY()) {
                 __forceHoverOff = true
             } else {
                 __forceHoverOff = false
@@ -66,19 +65,21 @@ Button {
             background: Item {
                 property bool down: control.pressed || (control.checkable && control.checked)
                 implicitWidth: Math.round(TextSingleton.implicitHeight * 4.5)
-                implicitHeight: Math.max(25, Math.round(TextSingleton.implicitHeight * 1.2))
+                implicitHeight: ScreenTools.isMobile ? ScreenTools.defaultFontPixelHeight * 3 * 0.75 : Math.max(25, Math.round(TextSingleton.implicitHeight * 1.2))
 
                 Rectangle {
-                    anchors.fill: parent
-                    color: __showHighlight ?
-                        control.__qgcPal.buttonHighlight :
-                        (primary ? control.__qgcPal.primaryButton : control.__qgcPal.button)
+                    anchors.fill:   parent
+                    border.width:   showBorder ? 1: 0
+                    border.color:   __qgcPal.buttonText
+                    color:          __showHighlight ?
+                                        control.__qgcPal.buttonHighlight :
+                                        (primary ? control.__qgcPal.primaryButton : control.__qgcPal.button)
                 }
 
                 Image {
                     id: imageItem
                     visible: control.menu !== null
-                    source: "arrow-down.png"
+                    source: "/qmlimages/arrow-down.png"
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.right: parent.right
                     anchors.rightMargin: padding.right
@@ -106,7 +107,7 @@ Button {
                         id:             text
                         antialiasing:   true
                         text:           control.text
-                        font.pointSize: __screenTools.defaultFontPointSize
+                        font.pixelSize: ScreenTools.defaultFontPixelSize
 
                         anchors.verticalCenter: parent.verticalCenter
 

@@ -29,7 +29,8 @@ This file is part of the QGROUNDCONTROL project
 
 #include "QGCApplication.h"
 #include "UASMessageHandler.h"
-#include "UASManager.h"
+#include "MultiVehicleManager.h"
+#include "UAS.h"
 
 UASMessage::UASMessage(int componentid, int severity, QString text)
 {
@@ -38,16 +39,31 @@ UASMessage::UASMessage(int componentid, int severity, QString text)
     _text     = text;
 }
 
+bool UASMessage::severityIsError()
+{
+    switch (_severity) {
+        case MAV_SEVERITY_EMERGENCY:
+        case MAV_SEVERITY_ALERT:
+        case MAV_SEVERITY_CRITICAL:
+        case MAV_SEVERITY_ERROR:
+            return true;
+        default:
+            return false;
+    }
+}
+
 IMPLEMENT_QGC_SINGLETON(UASMessageHandler, UASMessageHandler)
 
 UASMessageHandler::UASMessageHandler(QObject *parent)
     : QGCSingleton(parent)
     , _activeUAS(NULL)
     , _errorCount(0)
+    , _errorCountTotal(0)
     , _warningCount(0)
     , _normalCount(0)
+    , _showErrorsInToolbar(false)
 {
-    connect(UASManager::instance(), SIGNAL(activeUASSet(UASInterface*)), this, SLOT(setActiveUAS(UASInterface*)));
+    connect(MultiVehicleManager::instance(), &MultiVehicleManager::activeVehicleChanged, this, &UASMessageHandler::_activeVehicleChanged);
     emit textMessageReceived(NULL);
     emit textMessageCountChanged(0);
 }
@@ -71,10 +87,10 @@ void UASMessageHandler::clearMessages()
     emit textMessageCountChanged(0);
 }
 
-void UASMessageHandler::setActiveUAS(UASInterface* uas)
+void UASMessageHandler::_activeVehicleChanged(Vehicle* vehicle)
 {
     // If we were already attached to an autopilot, disconnect it.
-    if (_activeUAS && _activeUAS != uas)
+    if (_activeUAS)
     {
         disconnect(_activeUAS, SIGNAL(textMessageReceived(int,int,int,QString)), this, SLOT(handleTextMessage(int,int,int,QString)));
         _activeUAS = NULL;
@@ -82,8 +98,10 @@ void UASMessageHandler::setActiveUAS(UASInterface* uas)
         emit textMessageReceived(NULL);
     }
     // And now if there's an autopilot to follow, set up the UI.
-    if (uas)
+    if (vehicle)
     {
+        UAS* uas = vehicle->uas();
+        
         // Connect to the new UAS.
         clearMessages();
         _activeUAS = uas;
@@ -112,6 +130,7 @@ void UASMessageHandler::handleTextMessage(int, int compId, int severity, QString
         //Use set RGB values from given color from QGC
         style = QString("color: rgb(%1, %2, %3); font-weight:bold").arg(QGC::colorRed.red()).arg(QGC::colorRed.green()).arg(QGC::colorRed.blue());
         _errorCount++;
+        _errorCountTotal++;
         break;
     case MAV_SEVERITY_NOTICE:
     case MAV_SEVERITY_WARNING:
@@ -163,9 +182,23 @@ void UASMessageHandler::handleTextMessage(int, int compId, int severity, QString
     message->_setFormatedText(QString("<p style=\"color:#CCCCCC\">[%2 - COMP:%3]<font style=\"%1\">%4 %5</font></p>").arg(style).arg(dateString).arg(compId).arg(severityText).arg(text));
     _messages.append(message);
     int count = _messages.count();
+    if (message->severityIsError()) {
+        _latestError = severityText + " " + text;
+    }
     _mutex.unlock();
     emit textMessageReceived(message);
     emit textMessageCountChanged(count);
+    
+    if (_showErrorsInToolbar && message->severityIsError()) {
+        qgcApp()->showToolBarMessage(message->getText());
+    }
+}
+
+int UASMessageHandler::getErrorCountTotal() {
+    _mutex.lock();
+    int c = _errorCountTotal;
+    _mutex.unlock();
+    return c;
 }
 
 int UASMessageHandler::getErrorCount() {

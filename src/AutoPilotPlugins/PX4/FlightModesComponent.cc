@@ -38,7 +38,8 @@ static const SwitchListItem switchList[] = {
     { "RC_MAP_MODE_SW",     "Mode Switch:" },                // First entry must be mode switch
     { "RC_MAP_POSCTL_SW",   "Position Control Switch:" },
     { "RC_MAP_LOITER_SW",   "Loiter Switch:" },
-    { "RC_MAP_RETURN_SW",   "Return Switch:" }
+    { "RC_MAP_RETURN_SW",   "Return Switch:" },
+    { "RC_MAP_ACRO_SW",     "Acro Switch:" },
 };
 static const size_t cSwitchList = sizeof(switchList) / sizeof(switchList[0]);
 
@@ -62,17 +63,18 @@ QString FlightModesComponent::description(void) const
 
 QString FlightModesComponent::iconResource(void) const
 {
-    return "FlightModesComponentIcon.png";
+    return "/qmlimages/FlightModesComponentIcon.png";
 }
 
 bool FlightModesComponent::requiresSetup(void) const
 {
-    return true;
+    return _autopilot->getParameterFact(-1, "COM_RC_IN_MODE")->value().toInt() == 1 ? false : true;
 }
 
 bool FlightModesComponent::setupComplete(void) const
 {
-    return _autopilot->getParameterFact("RC_MAP_MODE_SW")->value().toInt() != 0;
+    return _autopilot->getParameterFact(-1, "COM_RC_IN_MODE")->value().toInt() == 1 ||
+            _autopilot->getParameterFact(FactSystem::defaultComponentId, "RC_MAP_MODE_SW")->value().toInt() != 0;
 }
 
 QString FlightModesComponent::setupStateDescription(void) const
@@ -103,16 +105,9 @@ QStringList FlightModesComponent::paramFilterList(void) const
     return list;
 }
 
-QWidget* FlightModesComponent::setupWidget(void) const
+QUrl FlightModesComponent::setupSource(void) const
 {
-    QGCQmlWidgetHolder* holder = new QGCQmlWidgetHolder();
-    Q_CHECK_PTR(holder);
-    
-    holder->setAutoPilot(_autopilot);
-    
-    holder->setSource(QUrl::fromUserInput("qrc:/qml/FlightModesComponent.qml"));
-    
-    return holder;
+    return QUrl::fromUserInput("qrc:/qml/FlightModesComponent.qml");
 }
 
 QUrl FlightModesComponent::summaryQmlSource(void) const
@@ -122,13 +117,18 @@ QUrl FlightModesComponent::summaryQmlSource(void) const
 
 QString FlightModesComponent::prerequisiteSetup(void) const
 {
-    PX4AutoPilotPlugin* plugin = dynamic_cast<PX4AutoPilotPlugin*>(_autopilot);
-    Q_ASSERT(plugin);
+    if (_autopilot->getParameterFact(-1, "COM_RC_IN_MODE")->value().toInt() == 1) {
+        // No RC input
+        return QString();
+    } else {
+        PX4AutoPilotPlugin* plugin = dynamic_cast<PX4AutoPilotPlugin*>(_autopilot);
+        Q_ASSERT(plugin);
 
-    if (!plugin->airframeComponent()->setupComplete()) {
-        return plugin->airframeComponent()->name();
-    } else if (!plugin->radioComponent()->setupComplete()) {
-        return plugin->radioComponent()->name();
+        if (!plugin->airframeComponent()->setupComplete()) {
+            return plugin->airframeComponent()->name();
+        } else if (!plugin->radioComponent()->setupComplete()) {
+            return plugin->radioComponent()->name();
+        }
     }
     
     return QString();

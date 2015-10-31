@@ -36,13 +36,16 @@ This file is part of the QGROUNDCONTROL project
 #include <QMutexLocker>
 #include <QHostInfo>
 #include <QMessageBox>
+#include <QClipboard>
 
 #include <iostream>
+#include <Eigen/Eigen>
 
 #include "QGCFlightGearLink.h"
 #include "QGC.h"
 #include "QGCFileDialog.h"
 #include "QGCMessageBox.h"
+#include "HomePositionManager.h"
 
 // FlightGear _fgProcess start and connection is quite fragile. Uncomment the define below to get higher level of debug output
 // for tracking down problems.
@@ -70,6 +73,7 @@ QGCFlightGearLink::QGCFlightGearLink(UASInterface* mav, QString startupArguments
     
     // We need a mechanism so show error message from our FGLink thread on the UI thread. This signal connection will do that for us.
     connect(this, &QGCFlightGearLink::showCriticalMessageFromThread, qgcApp(), &QGCApplication::criticalMessageBoxOnMainThread);
+    connect(this, &QGCFlightGearLink::disconnectSim, this, &QGCFlightGearLink::disconnectSimulation);
 }
 
 QGCFlightGearLink::~QGCFlightGearLink()
@@ -90,7 +94,7 @@ void QGCFlightGearLink::run()
     _udpCommSocket = new QUdpSocket(this);
     Q_CHECK_PTR(_udpCommSocket);
     _udpCommSocket->moveToThread(this);
-    _udpCommSocket->bind(host, port);
+    _udpCommSocket->bind(host, port, QAbstractSocket::ReuseAddressHint);
     QObject::connect(_udpCommSocket, SIGNAL(readyRead()), this, SLOT(readBytes()));
     
     
@@ -496,13 +500,13 @@ bool QGCFlightGearLink::disconnectSimulation()
     if (_fgProcess)
     {
         _fgProcess->close();
-        delete _fgProcess;
+        _fgProcess->deleteLater();
         _fgProcess = NULL;
     }
     if (_udpCommSocket)
     {
         _udpCommSocket->close();
-        delete _udpCommSocket;
+        _udpCommSocket->deleteLater();
         _udpCommSocket = NULL;
     }
 
@@ -953,11 +957,11 @@ bool QGCFlightGearLink::connectSimulation()
     }
     
     // We start out at our home position
-    _fgArgList << QString("--lat=%1").arg(UASManager::instance()->getHomeLatitude());
-    _fgArgList << QString("--lon=%1").arg(UASManager::instance()->getHomeLongitude());
+    _fgArgList << QString("--lat=%1").arg(HomePositionManager::instance()->getHomeLatitude());
+    _fgArgList << QString("--lon=%1").arg(HomePositionManager::instance()->getHomeLongitude());
     // The altitude is not set because an altitude not equal to the ground altitude leads to a non-zero default throttle in flightgear
     // Without the altitude-setting the aircraft is positioned on the ground
-    //_fgArgList << QString("--altitude=%1").arg(UASManager::instance()->getHomeAltitude());
+    //_fgArgList << QString("--altitude=%1").arg(HomePositionManager::instance()->getHomeAltitude());
     
 #ifdef DEBUG_FLIGHTGEAR_CONNECT
     // This tell FlightGear to output highest debug level of log output. Handy for debuggin failures by looking at the FG

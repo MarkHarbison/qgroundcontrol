@@ -80,37 +80,20 @@
     <addaction name="actionSetup"/>
     <addaction name="actionPlan"/>
     <addaction name="actionFlight"/>
-    <addaction name="actionAnalyze"/>
     <addaction name="separator"/>
     <addaction name="actionFullscreen"/>
     <addaction name="actionNormal"/>
     <addaction name="separator"/>
     <addaction name="actionStatusBar"/>
    </widget>
-   <widget class="QMenu" name="menuAdvanced">
+   <widget class="QMenu" name="menuWidgets">
     <property name="title">
-     <string>Advanced</string>
+     <string>Widgets</string>
     </property>
-    <widget class="QMenu" name="menuTools">
-     <property name="title">
-      <string>Tool Widgets</string>
-     </property>
-     <addaction name="actionNewCustomWidget"/>
-     <addaction name="actionLoadCustomWidgetFile"/>
-     <addaction name="separator"/>
-    </widget>
-    <addaction name="actionExperimentalPlanView"/>
-    <addaction name="actionLocal3DView"/>
-    <addaction name="actionTerminalView"/>
-    <addaction name="actionSimulationView"/>
-    <addaction name="separator"/>
-    <addaction name="actionSimulate"/>
-    <addaction name="separator"/>
-    <addaction name="menuTools"/>
    </widget>
    <addaction name="menuMGround"/>
    <addaction name="menuPerspectives"/>
-   <addaction name="menuAdvanced"/>
+   <addaction name="menuWidgets"/>
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
@@ -122,66 +105,9 @@
     <string>Ctrl+Q</string>
    </property>
   </action>
-  <action name="actionLiftoff">
-   <property name="enabled">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="../../qgroundcontrol.qrc">
-     <normaloff>:/res/Launch</normaloff>
-     <normalon>:/res/Launch</normalon>:/res/Launch</iconset>
-   </property>
-   <property name="text">
-    <string>Liftoff</string>
-   </property>
-  </action>
-  <action name="actionLand">
-   <property name="icon">
-    <iconset resource="../../qgroundcontrol.qrc">
-     <normaloff>:/res/Land</normaloff>:/res/Land</iconset>
-   </property>
-   <property name="text">
-    <string>Land</string>
-   </property>
-  </action>
-  <action name="actionEmergency_Land">
-   <property name="icon">
-    <iconset resource="../../qgroundcontrol.qrc">
-     <normaloff>:/res/Kill</normaloff>:/res/Kill</iconset>
-   </property>
-   <property name="text">
-    <string>Emergency Land</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+L</string>
-   </property>
-  </action>
-  <action name="actionEmergency_Kill">
-   <property name="icon">
-    <iconset resource="../../qgroundcontrol.qrc">
-     <normaloff>:/res/Kill</normaloff>:/res/Kill</iconset>
-   </property>
-   <property name="text">
-    <string>Kill UAS</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+K</string>
-   </property>
-  </action>
   <action name="actionAdd_Link">
    <property name="text">
     <string>Manage Communication Links</string>
-   </property>
-  </action>
-  <action name="actionSimulate">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Simulate</string>
-   </property>
-   <property name="toolTip">
-    <string>Simulate one vehicle to test and evaluate this application</string>
    </property>
   </action>
   <action name="actionOnline_Documentation">
@@ -207,14 +133,6 @@
     <string>Plan</string>
    </property>
   </action>
-  <action name="actionAnalyze">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Analyze</string>
-   </property>
-  </action>
   <action name="actionFlight">
    <property name="checkable">
     <bool>true</bool>
@@ -223,32 +141,12 @@
     <string>Fly</string>
    </property>
   </action>
-  <action name="actionNewCustomWidget">
-   <property name="text">
-    <string>New Custom Widget</string>
-   </property>
-  </action>
   <action name="actionMuteAudioOutput">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
     <string>Mute Audio Output</string>
-   </property>
-  </action>
-  <action name="actionShutdownMAV">
-   <property name="icon">
-    <iconset resource="../../qgroundcontrol.qrc">
-     <normaloff>:/res/Shutdown</normaloff>:/res/Shutdown</iconset>
-   </property>
-   <property name="text">
-    <string>Shutdown MAV</string>
-   </property>
-   <property name="toolTip">
-    <string>Shutdown the onboard computer - works not during flight</string>
-   </property>
-   <property name="statusTip">
-    <string>Shutdown the onboard computer - works not during flight</string>
    </property>
   </action>
   <action name="actionSettings">
@@ -287,11 +185,6 @@
     <string>Esc</string>
    </property>
   </action>
-  <action name="actionLoadCustomWidgetFile">
-   <property name="text">
-    <string>Load Custom Widget File</string>
-   </property>
-  </action>
   <action name="actionSetup">
    <property name="checkable">
     <bool>true</bool>
@@ -314,48 +207,28 @@
     <string>Advanced Mode</string>
    </property>
   </action>
-  <action name="actionSimulationView">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>HIL Simulation</string>
-   </property>
-  </action>
-  <action name="actionTerminalView">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Terminal</string>
-   </property>
-  </action>
-  <action name="actionLocal3DView">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Local 3D View</string>
-   </property>
-  </action>
   <action name="actionStatusBar">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Status Bar</string>
+    <string>Show Status Bar</string>
    </property>
   </action>
-  <action name="actionExperimentalPlanView">
+  <action name="actionMissionEditor">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
-    <string>Experimental Plan View</string>
+    <string>New Mission Editor</string>
+   </property>
+   <property name="toolTip">
+    <string>Mission Editor</string>
    </property>
   </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
- <resources>
-  <include location="../../qgroundcontrol.qrc"/>
- </resources>
+ <resources/>
  <connections>
   <connection>
    <sender>actionExit</sender>

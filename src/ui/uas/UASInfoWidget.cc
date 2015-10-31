@@ -30,26 +30,28 @@ This file is part of the PIXHAWK project
  */
 
 #include <QtGlobal>
-
-#include <float.h>
-#include <UASInfoWidget.h>
-#include <UASManager.h>
-#include <QGC.h>
 #include <QTimer>
 #include <QDir>
+#include <QDebug>
+
+#include <float.h>
 #include <cstdlib>
 #include <cmath>
 
-#include <QDebug>
+#include "UASInfoWidget.h"
+#include "MultiVehicleManager.h"
+#include "QGC.h"
+#include "UAS.h"
 
-UASInfoWidget::UASInfoWidget(QWidget *parent, QString name) : QWidget(parent)
+UASInfoWidget::UASInfoWidget(const QString& title, QAction* action, QWidget *parent, QString name)
+    : QGCDockWidget(title, action, parent)
 {
     ui.setupUi(this);
     this->name = name;
     activeUAS = NULL;
 
-    connect(UASManager::instance(), SIGNAL(activeUASSet(UASInterface*)), this, SLOT(setActiveUAS(UASInterface*)));
-    setActiveUAS(UASManager::instance()->getActiveUAS());
+    connect(MultiVehicleManager::instance(), &MultiVehicleManager::activeVehicleChanged, this, &UASInfoWidget::_activeVehicleChanged);
+    _activeVehicleChanged(MultiVehicleManager::instance()->activeVehicle());
 
     startTime = QGC::groundTimeMilliseconds();
 
@@ -71,6 +73,8 @@ UASInfoWidget::UASInfoWidget(QWidget *parent, QString name) : QWidget(parent)
     updateTimer->start(updateInterval);
 
     this->setVisible(false);
+    
+    loadSettings();
 }
 
 UASInfoWidget::~UASInfoWidget()
@@ -94,23 +98,23 @@ void UASInfoWidget::hideEvent(QHideEvent* event)
     updateTimer->stop();
 }
 
-void UASInfoWidget::addUAS(UASInterface* uas)
+void UASInfoWidget::_activeVehicleChanged(Vehicle* vehicle)
 {
-    if (uas != NULL) {
-        connect(uas, SIGNAL(batteryChanged(UASInterface*, double, double, double, int)), this, SLOT(updateBattery(UASInterface*, double, double, double, int)));
-        connect(uas, SIGNAL(dropRateChanged(int,float)), this, SLOT(updateReceiveLoss(int,float)));
-        connect(uas, SIGNAL(loadChanged(UASInterface*, double)), this, SLOT(updateCPULoad(UASInterface*,double)));
-        connect(uas, SIGNAL(errCountChanged(int,QString,QString,int)), this, SLOT(updateErrorCount(int,QString,QString,int)));
-
-        // Set this UAS as active if it is the first one
-        if (activeUAS == 0) activeUAS = uas;
+    if (activeUAS) {
+        disconnect(activeUAS, SIGNAL(batteryChanged(UASInterface*, double, double, double, int)), this, SLOT(updateBattery(UASInterface*, double, double, double, int)));
+        disconnect(activeUAS, SIGNAL(dropRateChanged(int,float)), this, SLOT(updateReceiveLoss(int,float)));
+        disconnect(activeUAS, SIGNAL(loadChanged(UASInterface*, double)), this, SLOT(updateCPULoad(UASInterface*,double)));
+        disconnect(activeUAS, SIGNAL(errCountChanged(int,QString,QString,int)), this, SLOT(updateErrorCount(int,QString,QString,int)));
+        activeUAS = NULL;
     }
-}
-
-void UASInfoWidget::setActiveUAS(UASInterface* uas)
-{
-    if (uas)
-        activeUAS = uas;
+    
+    if (vehicle) {
+        activeUAS = vehicle->uas();
+        connect(activeUAS, SIGNAL(batteryChanged(UASInterface*, double, double, double, int)), this, SLOT(updateBattery(UASInterface*, double, double, double, int)));
+        connect(activeUAS, SIGNAL(dropRateChanged(int,float)), this, SLOT(updateReceiveLoss(int,float)));
+        connect(activeUAS, SIGNAL(loadChanged(UASInterface*, double)), this, SLOT(updateCPULoad(UASInterface*,double)));
+        connect(activeUAS, SIGNAL(errCountChanged(int,QString,QString,int)), this, SLOT(updateErrorCount(int,QString,QString,int)));
+    }
 }
 
 void UASInfoWidget::updateBattery(UASInterface* uas, double voltage, double current, double percent, int seconds)

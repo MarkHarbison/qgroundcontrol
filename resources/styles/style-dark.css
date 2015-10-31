@@ -2,12 +2,14 @@
  This is the master style sheet as well as the dark style. This style sheet should contain both
  color and size/positioning information for all styled controls. This sheet is always loaded first
  Then the user specified style sheet is loaded after it to override and color settings.
+
+ Font sizes are defined with tokens, which are parsed and replaced at run time.
+
 */
 
 * {
     background-color: #222;
     color: #FFF;
-    font-size: 12pt;
 }
 
 QWidget#viewModeWidget {
@@ -128,7 +130,7 @@ QGroupBox::title {
     subcontrol-position: top center;
     margin: 0 3px 0 3px;
     padding: 0 3px 0 0;
-    font: bold 8px;
+    font: bold;
     color: #DDD;
 }
 
@@ -148,25 +150,18 @@ QLabel:disabled {
     border-color: #444;
 }
 
-QLabel#noUas {
-    font-size: 30pt;
-}
-
 QMessageBox {
     min-width: 400px;
     min-height: 300px;
 }
 
 QLabel#tabTitleLabel {
-    font-size: 28pt;
-    font-weight: lighter;
     margin-top: 16px;
     margin-bottom: 8px;
 }
 
 QLabel#instructionLabel {
     color: #FEC654;
-    font-size: 26pt;
 }
 
 QLineEdit {
@@ -225,8 +220,6 @@ QMenuBar::item:disabled {
 QPlainTextEdit {
     border: 1px solid #777;
     border-radius: 2px;
-    font-family: "Monospace";
-    font: large;
 }
 
 QProgressBar {
@@ -529,11 +522,6 @@ UASQuickViewItem QLabel {
     padding: 0;
     margin: 0;
     min-height: 1em;
-    font-weight: bold;
-}
-
-UASQuickViewItem QLabel#value {
-    font-size: 20pt;
 }
 
 UASView {
@@ -553,22 +541,4 @@ QGCUnconnectedInfoWidget QPushButton#connectButton {
     max-height: 275px;
     margin: 15px;
     padding: 20px;
-}
-
-WaypointEditableView, WaypointViewOnlyView {
-    border: 1px solid #777;
-    border-radius: 5px;
-    margin-bottom: 3px;
-}
-
-WaypointEditableView[RowColoring="odd"], WaypointViewOnlyView[RowColoring="odd"] {
-    background-color: #333;
-}
-
-WaypointEditableView[RowColoring="even"], WaypointViewOnlyView[RowColoring="even"] {
-    background-color: #555;
-}
-
-WaypointEditableView QCheckBox, WaypointEditableView .QWidget, WaypointViewOnlyView QCheckBox, WaypointViewOnlyView .QWidget {
-    background: none;
 }

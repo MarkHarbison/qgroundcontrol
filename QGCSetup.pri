@@ -19,10 +19,6 @@
 
 QMAKE_POST_LINK += echo "Copying files"
 
-AndroidBuild {
-    INSTALLS += $$DESTDIR
-}
-
 #
 # Copy the application resources to the associated place alongside the application
 #
@@ -44,7 +40,7 @@ WindowsBuild {
     BASEDIR_COPY_RESOURCE_LIST = $$replace(BASEDIR,"/","\\")
     QMAKE_POST_LINK += $$escape_expand(\\n) $$QMAKE_COPY_DIR \"$$BASEDIR_COPY_RESOURCE_LIST\\flightgear\" \"$$DESTDIR_COPY_RESOURCE_LIST\\flightgear\"
 } else {
-    !AndroidBuild {
+    !MobileBuild {
         # Make sure to keep both sides of this if using the same set of directories
         QMAKE_POST_LINK += && $$QMAKE_COPY_DIR $$BASEDIR/flightgear $$DESTDIR_COPY_RESOURCE_LIST
     }
@@ -55,9 +51,10 @@ WindowsBuild {
 #
 
 MacBuild {
+
 	# Copy non-standard libraries and frameworks into app package
     QMAKE_POST_LINK += && $$QMAKE_COPY_DIR $$BASEDIR/libs/lib/mac64/lib $$DESTDIR/$${TARGET}.app/Contents/libs
-    QMAKE_POST_LINK += && $$QMAKE_COPY_DIR -L $$BASEDIR/libs/lib/Frameworks $$DESTDIR/$${TARGET}.app/Contents
+    QMAKE_POST_LINK += && rsync -a --delete $$BASEDIR/libs/lib/Frameworks $$DESTDIR/$${TARGET}.app/Contents/
 
 	# Fix library paths inside executable
 
@@ -159,62 +156,18 @@ MacBuild {
 WindowsBuild {
     BASEDIR_WIN = $$replace(BASEDIR, "/", "\\")
     DESTDIR_WIN = $$replace(DESTDIR, "/", "\\")
-    D_DIR = $$[QT_INSTALL_LIBEXECS]
-    DLL_DIR = $$replace(D_DIR, "/", "\\")
 
     # Copy dependencies
     DebugBuild: DLL_QT_DEBUGCHAR = "d"
     ReleaseBuild: DLL_QT_DEBUGCHAR = ""
     COPY_FILE_LIST = \
         $$BASEDIR\\libs\\lib\\sdl\\win32\\SDL.dll \
-        $$BASEDIR\\libs\\thirdParty\\libxbee\\lib\\libxbee.dll \
-        $$DLL_DIR\\icu*.dll \
-        $$DLL_DIR\\Qt5Core$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5Gui$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5Location$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5Multimedia$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5MultimediaWidgets$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5Network$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5OpenGL$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5Positioning$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5PrintSupport$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5Qml$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5Quick$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5QuickWidgets$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5Sensors$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5SerialPort$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5Sql$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5Svg$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5Test$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5WebKit$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5WebKitWidgets$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5Widgets$${DLL_QT_DEBUGCHAR}.dll \
-        $$DLL_DIR\\Qt5Xml$${DLL_QT_DEBUGCHAR}.dll
+        $$BASEDIR\\libs\\thirdParty\\libxbee\\lib\\libxbee.dll
+
     for(COPY_FILE, COPY_FILE_LIST) {
 		QMAKE_POST_LINK += $$escape_expand(\\n) $$QMAKE_COPY \"$$COPY_FILE\" \"$$DESTDIR_WIN\"
     }
 
-    # Copy platform plugins
-    P_DIR = $$[QT_INSTALL_PLUGINS]
-    PLUGINS_DIR_WIN = $$replace(P_DIR, "/", "\\")
-    QMAKE_POST_LINK += $$escape_expand(\\n) mkdir "$$DESTDIR_WIN\\platforms"
-    QMAKE_POST_LINK += $$escape_expand(\\n) $$QMAKE_COPY     \"$$PLUGINS_DIR_WIN\\platforms\\qwindows$${DLL_QT_DEBUGCHAR}.dll\" \"$$DESTDIR_WIN\\platforms\\qwindows$${DLL_QT_DEBUGCHAR}.dll\"
-    QMAKE_POST_LINK += $$escape_expand(\\n) $$QMAKE_COPY_DIR \"$$PLUGINS_DIR_WIN\\imageformats\" \"$$DESTDIR_WIN\\imageformats\"
-    QMAKE_POST_LINK += $$escape_expand(\\n) $$QMAKE_COPY_DIR \"$$PLUGINS_DIR_WIN\\sqldrivers\" \"$$DESTDIR_WIN\\sqldrivers\"
-    QMAKE_POST_LINK += $$escape_expand(\\n) $$QMAKE_COPY_DIR \"$$PLUGINS_DIR_WIN\\bearer\" \"$$DESTDIR_WIN\\bearer\"
-    QMAKE_POST_LINK += $$escape_expand(\\n) $$QMAKE_COPY_DIR \"$$PLUGINS_DIR_WIN\\iconengines\" \"$$DESTDIR_WIN\\iconengines\"
-    QMAKE_POST_LINK += $$escape_expand(\\n) $$QMAKE_COPY_DIR \"$$PLUGINS_DIR_WIN\\printsupport\" \"$$DESTDIR_WIN\\printsupport\"
-    QMAKE_POST_LINK += $$escape_expand(\\n) $$QMAKE_COPY_DIR \"$$PLUGINS_DIR_WIN\\qmltooling\" \"$$DESTDIR_WIN\\qmltooling\"
-    QMAKE_POST_LINK += $$escape_expand(\\n) $$QMAKE_COPY_DIR \"$$PLUGINS_DIR_WIN\\geoservices\" \"$$DESTDIR_WIN\\geoservices\"
-
-    # Copy Qml libraries
-    Q_DIR = $$[QT_INSTALL_QML]
-    QML_DIR_WIN = $$replace(Q_DIR, "/", "\\")
-    QMAKE_POST_LINK += $$escape_expand(\\n) $$QMAKE_COPY_DIR \"$$QML_DIR_WIN\\QtGraphicalEffects\" \"$$DESTDIR_WIN\\QtGraphicalEffects\"
-    QMAKE_POST_LINK += $$escape_expand(\\n) $$QMAKE_COPY_DIR \"$$QML_DIR_WIN\\QtQuick\" \"$$DESTDIR_WIN\\QtQuick\"
-    QMAKE_POST_LINK += $$escape_expand(\\n) $$QMAKE_COPY_DIR \"$$QML_DIR_WIN\\QtQuick.2\" \"$$DESTDIR_WIN\\QtQuick.2\"
-    QMAKE_POST_LINK += $$escape_expand(\\n) $$QMAKE_COPY_DIR \"$$QML_DIR_WIN\\QtLocation\" \"$$DESTDIR_WIN\\QtLocation\"
-    QMAKE_POST_LINK += $$escape_expand(\\n) $$QMAKE_COPY_DIR \"$$QML_DIR_WIN\\QtPositioning\" \"$$DESTDIR_WIN\\QtPositioning\"
 
         ReleaseBuild {
 		# Copy Visual Studio DLLs
@@ -235,4 +188,9 @@ WindowsBuild {
 			error("Visual studio version not supported, installation cannot be completed.")
 		}
 	}
+
+    DEPLOY_TARGET = $$shell_quote($$shell_path($$DESTDIR_WIN\\$${TARGET}.exe))
+    QMAKE_POST_LINK += $$escape_expand(\\n) windeployqt --no-compiler-runtime --qmldir=$${BASEDIR_WIN}\\src $${DEPLOY_TARGET}
+
 }
+

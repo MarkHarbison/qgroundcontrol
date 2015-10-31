@@ -25,7 +25,6 @@
 ///     @author Don Gagne <don@thegagnes.com>
 
 #include "ParameterEditorController.h"
-#include "UASManager.h"
 #include "AutoPilotPluginManager.h"
 #include "QGCFileDialog.h"
 #include "QGCMessageBox.h"
@@ -33,22 +32,18 @@
 #include "MainWindow.h"
 
 /// @Brief Constructs a new ParameterEditorController Widget. This widget is used within the PX4VehicleConfig set of screens.
-ParameterEditorController::ParameterEditorController(void) :
-	_uas(NULL),
-	_autopilot(NULL)
+ParameterEditorController::ParameterEditorController(void)
 {
-	_uas = UASManager::instance()->getActiveUAS();
-	Q_ASSERT(_uas);
-	
-	_autopilot = AutoPilotPluginManager::instance()->getInstanceForAutoPilotPlugin(_uas);
-	Q_ASSERT(_autopilot);
-	Q_ASSERT(_autopilot->pluginReady());
-    
     const QMap<int, QMap<QString, QStringList> >& groupMap = _autopilot->getGroupMap();
     
     foreach (int componentId, groupMap.keys()) {
 		_componentIds += QString("%1").arg(componentId);
 	}
+}
+
+ParameterEditorController::~ParameterEditorController()
+{
+    
 }
 
 QStringList ParameterEditorController::getGroupsForComponent(int componentId)
@@ -58,11 +53,33 @@ QStringList ParameterEditorController::getGroupsForComponent(int componentId)
 	return groupMap[componentId].keys();
 }
 
-QStringList ParameterEditorController::getFactsForGroup(int componentId, QString group)
+QStringList ParameterEditorController::getParametersForGroup(int componentId, QString group)
 {
 	const QMap<int, QMap<QString, QStringList> >& groupMap = _autopilot->getGroupMap();
 	
 	return groupMap[componentId][group];
+}
+
+QStringList ParameterEditorController::searchParametersForComponent(int componentId, const QString& searchText, bool searchInName, bool searchInDescriptions)
+{
+    QStringList list;
+    
+    foreach(QString paramName, _autopilot->parameterNames(componentId)) {
+        if (searchText.isEmpty()) {
+            list += paramName;
+        } else {
+            Fact* fact = _autopilot->getParameterFact(componentId, paramName);
+            
+            if (searchInName && fact->name().contains(searchText, Qt::CaseInsensitive)) {
+                list += paramName;
+            } else if (searchInDescriptions && (fact->shortDescription().contains(searchText, Qt::CaseInsensitive) || fact->longDescription().contains(searchText, Qt::CaseInsensitive))) {
+                list += paramName;
+            }
+        }
+    }
+    list.sort();
+    
+    return list;
 }
 
 void ParameterEditorController::clearRCToParam(void)
@@ -99,6 +116,8 @@ void ParameterEditorController::saveToFile(void)
 
 void ParameterEditorController::loadFromFile(void)
 {
+    QString errors;
+    
     Q_ASSERT(_autopilot);
     
     QString msgTitle("Load Parameters");
@@ -116,14 +135,24 @@ void ParameterEditorController::loadFromFile(void)
         }
         
         QTextStream stream(&file);
-        _autopilot->readParametersFromStream(stream);
+        errors = _autopilot->readParametersFromStream(stream);
         file.close();
+        
+        if (!errors.isEmpty()) {
+            emit showErrorMessage(errors);
+        }
     }
 }
 
 void ParameterEditorController::refresh(void)
 {
 	_autopilot->refreshAllParameters();
+}
+
+void ParameterEditorController::resetAllToDefaults(void)
+{
+    _autopilot->resetAllParametersToDefaults();
+    refresh();
 }
 
 void ParameterEditorController::setRCToParam(const QString& paramName)

@@ -29,12 +29,12 @@
 #include "MainWindowTest.h"
 #include "MockLink.h"
 #include "QGCMessageBox.h"
+#include "MultiVehicleManager.h"
 
 UT_REGISTER_TEST(MainWindowTest)
 
 MainWindowTest::MainWindowTest(void) :
-    _mainWindow(NULL),
-    _mainToolBar(NULL)
+    _mainWindow()
 {
     
 }
@@ -43,16 +43,14 @@ void MainWindowTest::init(void)
 {
     UnitTest::init();
 
-    _mainWindow = MainWindow::_create(NULL);
+    _mainWindow = MainWindow::_create();
     Q_CHECK_PTR(_mainWindow);
-    
-    _mainToolBar = _mainWindow->getMainToolBar();
-    Q_ASSERT(_mainToolBar);
 }
 
 void MainWindowTest::cleanup(void)
 {
     _mainWindow->close();
+    QTest::qWait(200);
     delete _mainWindow;
     
     UnitTest::cleanup();
@@ -65,21 +63,15 @@ void MainWindowTest::_connectWindowClose_test(MAV_AUTOPILOT autopilot)
     
     MockLink* link = new MockLink();
     Q_CHECK_PTR(link);
-    link->setAutopilotType(autopilot);
+    link->setFirmwareType(autopilot);
     LinkManager::instance()->_addLink(link);
+    
     linkMgr->connectLink(link);
-    QTest::qWait(5000); // Give enough time for UI to settle and heartbeats to go through
     
-    // Cycle through all the top level views
+    // Wait for the Vehicle to work it's way through the various threads
     
-    _mainToolBar->onSetupView();
-    QTest::qWait(1000);
-    _mainToolBar->onPlanView();
-    QTest::qWait(1000);
-    _mainToolBar->onFlyView();
-    QTest::qWait(1000);
-    _mainToolBar->onAnalyzeView();
-    QTest::qWait(1000);
+    QSignalSpy spyVehicle(MultiVehicleManager::instance(), SIGNAL(activeVehicleChanged(Vehicle*)));
+    QCOMPARE(spyVehicle.wait(5000), true);
     
     // On MainWindow close we should get a message box telling the user to disconnect first. Cancel should do nothing.
     setExpectedMessageBox(QGCMessageBox::Cancel);
@@ -87,11 +79,8 @@ void MainWindowTest::_connectWindowClose_test(MAV_AUTOPILOT autopilot)
     QTest::qWait(1000); // Need to allow signals to move between threads    
     checkExpectedMessageBox();
 
-    // We are going to disconnect the link which is going to pop a save file dialog
-    setExpectedFileDialog(getSaveFileName, QStringList());
     linkMgr->disconnectLink(link);
     QTest::qWait(1000); // Need to allow signals to move between threads
-    checkExpectedFileDialog();
 }
 
 void MainWindowTest::_connectWindowClosePX4_test(void) {

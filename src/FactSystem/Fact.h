@@ -35,17 +35,38 @@
 #include <QDebug>
 
 /// @brief A Fact is used to hold a single value within the system.
-///
-/// Along with the value property is a set of meta data which further describes the Fact. This information is
-/// exposed through QObject Properties such that you can bind to it from QML as well as use it within C++ code.
-/// Since the meta data is common to all instances of the same Fact, it is acually stored once in a seperate object.
 class Fact : public QObject
 {
     Q_OBJECT
     
 public:
-    //Fact(int componentId, QString name = "", FactMetaData::ValueType_t type = FactMetaData::valueTypeInt32, QObject* parent = NULL);
+    Fact(QObject* parent = NULL);
     Fact(int componentId, QString name, FactMetaData::ValueType_t type, QObject* parent = NULL);
+    Fact(const Fact& other, QObject* parent = NULL);
+
+    const Fact& operator=(const Fact& other);
+
+    Q_PROPERTY(int      componentId             READ componentId                            CONSTANT)
+    Q_PROPERTY(QString  group                   READ group                                  CONSTANT)
+    Q_PROPERTY(QString  name                    READ name                                   CONSTANT)
+    Q_PROPERTY(QVariant value                   READ value                  WRITE setValue  NOTIFY valueChanged USER true)
+    Q_PROPERTY(QVariant valueString             READ valueString                            NOTIFY valueChanged)
+    Q_PROPERTY(QString  units                   READ units                                  CONSTANT)
+    Q_PROPERTY(QVariant defaultValue            READ defaultValue                           CONSTANT)
+    Q_PROPERTY(bool     defaultValueAvailable   READ defaultValueAvailable                  CONSTANT)
+    Q_PROPERTY(bool     valueEqualsDefault      READ valueEqualsDefault                     NOTIFY valueChanged)
+    Q_PROPERTY(FactMetaData::ValueType_t type   READ type                                   CONSTANT)
+    Q_PROPERTY(QString  shortDescription        READ shortDescription                       CONSTANT)
+    Q_PROPERTY(QString  longDescription         READ longDescription                        CONSTANT)
+    Q_PROPERTY(QVariant min                     READ min                                    CONSTANT)
+    Q_PROPERTY(bool     minIsDefaultForType     READ minIsDefaultForType                    CONSTANT)
+    Q_PROPERTY(QVariant max                     READ max                                    CONSTANT)
+    Q_PROPERTY(bool     maxIsDefaultForType     READ maxIsDefaultForType                    CONSTANT)
+    Q_PROPERTY(int      decimalPlaces           READ decimalPlaces                          CONSTANT)
+    
+    /// Convert and validate value
+    ///     @param convertOnly true: validate type conversion only, false: validate against meta data as well
+    Q_INVOKABLE QString validate(const QString& value, bool convertOnly);
     
     // Property system methods
     
@@ -54,27 +75,39 @@ public:
     QVariant value(void) const;
     QString valueString(void) const;
     void setValue(const QVariant& value);
-    QVariant defaultValue(void);
-	bool defaultValueAvailable(void);
-    bool valueEqualsDefault(void);
-    FactMetaData::ValueType_t type(void);
-    QString shortDescription(void);
-    QString longDescription(void);
-    QString units(void);
-    QVariant min(void);
-    QVariant max(void);    
-    QString group(void);
+    QVariant defaultValue(void) const;
+	bool defaultValueAvailable(void) const;
+    bool valueEqualsDefault(void) const;
+    FactMetaData::ValueType_t type(void) const;
+    QString shortDescription(void) const;
+    QString longDescription(void) const;
+    QString units(void) const;
+    QVariant min(void) const;
+    bool minIsDefaultForType(void) const;
+    QVariant max(void) const;
+    bool maxIsDefaultForType(void) const;
+    QString group(void) const;
+    int decimalPlaces(void) const;
+    
+    /// Sets and sends new value to vehicle even if value is the same
+    void forceSetValue(const QVariant& value);
     
     /// Sets the meta data associated with the Fact.
     void setMetaData(FactMetaData* metaData);
     
     void _containerSetValue(const QVariant& value);
     
+    /// Generally you should not change the name of a fact. But if you know what you are doing, you can.
+    void _setName(const QString& name) { _name = name; }
+    
 signals:
     /// QObject Property System signal for value property changes
     ///
     /// This signal is only meant for use by the QT property system. It should not be connected to by client code.
     void valueChanged(QVariant value);
+    
+    /// Signalled when the param write ack comes back from the vehicle
+    void vehicleUpdated(QVariant value);
     
     /// Signalled when property has been changed by a call to the property write accessor
     ///

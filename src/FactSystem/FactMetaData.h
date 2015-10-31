@@ -52,32 +52,53 @@ public:
         valueTypeDouble
     } ValueType_t;
     
+    FactMetaData(QObject* parent = NULL);
     FactMetaData(ValueType_t type, QObject* parent = NULL);
-    
-	// Property accessors
-	QString     group(void)						{ return _group; }
-	ValueType_t type(void)                      { return _type; }
-	QVariant    defaultValue(void);
-	bool		defaultValueAvailable(void)     { return _defaultValueAvailable; }
-	QString     shortDescription(void)          { return _shortDescription; }
-	QString     longDescription(void)           { return _longDescription;}
-	QString     units(void)                     { return _units; }
-	QVariant    min(void)                       { return _min; }
-	QVariant    max(void)                       { return _max; }
-	
-	// Property setters
-	void setGroup(const QString& group)                         { _group = group; }
-	void setDefaultValue(const QVariant& defaultValue);
-	void setShortDescription(const QString& shortDescription)   { _shortDescription = shortDescription; }
-	void setLongDescription(const QString& longDescription)     { _longDescription = longDescription;}
-	void setUnits(const QString& units)                         { _units = units; }
+    FactMetaData(const FactMetaData& other, QObject* parent = NULL);
+
+    const FactMetaData& operator=(const FactMetaData& other);
+
+    // Property accessors
+    QString     name(void) const                    { return _name; }
+    QString     group(void) const                   { return _group; }
+    ValueType_t type(void) const                    { return _type; }
+    QVariant    defaultValue(void) const;
+    bool		defaultValueAvailable(void) const   { return _defaultValueAvailable; }
+    QString     shortDescription(void) const        { return _shortDescription; }
+    QString     longDescription(void) const         { return _longDescription;}
+    QString     units(void) const                   { return _units; }
+    QVariant    min(void) const                     { return _min; }
+    QVariant    max(void) const                     { return _max; }
+    bool        minIsDefaultForType(void) const     { return _minIsDefaultForType; }
+    bool        maxIsDefaultForType(void) const     { return _maxIsDefaultForType; }
+    int         decimalPlaces(void) const           { return _decimalPlaces; }
+
+    // Property setters
+    void setName(const QString& name)                           { _name = name; }
+    void setGroup(const QString& group)                         { _group = group; }
+    void setDefaultValue(const QVariant& defaultValue);
+    void setShortDescription(const QString& shortDescription)   { _shortDescription = shortDescription; }
+    void setLongDescription(const QString& longDescription)     { _longDescription = longDescription;}
+    void setUnits(const QString& units)                         { _units = units; }
     void setMin(const QVariant& max);
     void setMax(const QVariant& max);
+    void setDecimalPlaces(int decimalPlaces)                    { _decimalPlaces = decimalPlaces; }
+    
+    /// Converts the specified value, validating against meta data
+    ///     @param value Value to convert, can be string
+    ///     @param convertOnly true: convert to correct type only, do not validate against meta data
+    ///     @param typeValue Converted value, correctly typed
+    ///     @param errorString Error string if convert fails
+    /// @returns false: Convert failed, errorString set
+    bool convertAndValidate(const QVariant& value, bool convertOnly, QVariant& typedValue, QString& errorString);
+
+    static const int defaultDecimalPlaces = 3;
 
 private:
-    QVariant _minForType(void);
-    QVariant _maxForType(void);
+    QVariant _minForType(void) const;
+    QVariant _maxForType(void) const;
     
+    QString     _name;
     QString     _group;
     ValueType_t _type;
     QVariant    _defaultValue;
@@ -87,6 +108,9 @@ private:
     QString     _units;
     QVariant    _min;
     QVariant    _max;
+    bool        _minIsDefaultForType;
+    bool        _maxIsDefaultForType;
+    int         _decimalPlaces;
 };
 
 #endif

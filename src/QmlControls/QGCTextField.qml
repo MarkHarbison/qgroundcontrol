@@ -10,9 +10,9 @@ TextField {
     property string unitsLabel: ""
 
     property var __qgcPal: QGCPalette { colorGroupEnabled: enabled }
-    property ScreenTools __screenTools: ScreenTools { }
 
     textColor: __qgcPal.textFieldText
+    height: ScreenTools.isMobile ? ScreenTools.defaultFontPixelHeight * 3 * 0.75 : implicitHeight
 
     Label {
         id: unitsLabelWidthGenerator
@@ -51,7 +51,7 @@ TextField {
                 width: unitsLabelWidthGenerator.width
 
                 text: control.unitsLabel
-                font.pointSize: __screenTools.defaultFontPointSize
+                font.pixelSize: ScreenTools.defaultFontPixelSize
                 antialiasing:   true
 
                 color: control.textColor
@@ -60,5 +60,11 @@ TextField {
         }
 
         padding.right: control.showUnits ? unitsLabelWidthGenerator.width : control.__contentHeight/3
+    }
+
+    onActiveFocusChanged: {
+        if (activeFocus) {
+            selectAll()
+        }
     }
 }

@@ -28,7 +28,7 @@
 
 #include "UASInterface.h"
 #include "AutoPilotPlugin.h"
-#include "UASManagerInterface.h"
+#include "Vehicle.h"
 
 class ViewWidgetController : public QObject
 {
@@ -44,13 +44,11 @@ signals:
 	void pluginDisconnected(void);
 	
 private slots:
-	void _activeUasChanged(UASInterface* UAS);
-	void _pluginReadyChanged(bool pluginReady);
+    void _vehicleAvailable(bool available);
 
 private:
-	AutoPilotPlugin*		_autopilot;
-	UASManagerInterface*	_uasManager;
-	UASInterface*			_uas;
+	AutoPilotPlugin*        _autopilot;
+	UASInterface*           _uas;
 };
 
 #endif

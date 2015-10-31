@@ -48,12 +48,14 @@
 #include <QtCore/QUrl>
 #include <QtCore/QUrlQuery>
 #include <QtCore/QLocale>
+#include <QDebug>
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtNetwork/QNetworkRequest>
 #include <QtPositioning/QGeoCoordinate>
 #include <QtPositioning/QGeoAddress>
 #include <QtPositioning/QGeoShape>
 #include <QtPositioning/QGeoRectangle>
+#include <QDebug>
 
 #include "qgeocodingmanagerengineqgc.h"
 #include "qgeocodereplyqgc.h"

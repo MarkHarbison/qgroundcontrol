@@ -48,9 +48,9 @@ This file is part of the PIXHAWK project
 class GAudioOutput : public QGCSingleton
 {
     Q_OBJECT
-    
+
     DECLARE_QGC_SINGLETON(GAudioOutput, GAudioOutput)
-    
+
 public:
     /** @brief List available voices */
     QStringList listVoices(void);
@@ -77,11 +77,7 @@ public:
 
 public slots:
     /** @brief Say this text if current output priority matches */
-    bool say(QString text, int severity = 6);
-    /** @brief Play alert sound and say notification message */
-    bool alert(QString text);
-    /** @brief Play emergency sound once */
-    void beep();
+    bool say(const QString& text, int severity = 6);
     /** @brief Mute/unmute sound */
     void mute(bool mute);
 
@@ -92,13 +88,16 @@ signals:
 
 protected:
     bool muted;
+
+#if !defined __android__
     QThread* thread;
     QGCAudioWorker* worker;
-    
+#endif
+
 private:
     GAudioOutput(QObject *parent = NULL);
     ~GAudioOutput();
-    
+
     static const char* _mutedKey;
 };
 

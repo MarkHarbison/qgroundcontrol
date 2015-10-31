@@ -45,11 +45,7 @@ public:
         ShowMavlink
     };
 
-#ifdef __android__
     SettingsDialog(QWidget *parent = 0, int showTab = ShowDefault, Qt::WindowFlags flags = Qt::Sheet);
-#else
-    SettingsDialog(JoystickInput *joystick, QWidget *parent = 0, int showTab = ShowDefault, Qt::WindowFlags flags = Qt::Sheet);
-#endif
     ~SettingsDialog();
 
 public slots:
@@ -59,13 +55,10 @@ private slots:
     void _deleteSettingsToggled(bool checked);
     void _selectSavedFilesDirectory(void);
     void _validateBeforeClose(void);
-
-    void on_showGPS_clicked(bool checked);
-    void on_showBattery_clicked(bool checked);
-    void on_showMessages_clicked(bool checked);
-    void on_showMav_clicked(bool checked);
-
-    void on_showRSSI_clicked(bool checked);
+    
+    void _bingMapRadioClicked(bool checked);
+    void _googleMapRadioClicked(bool checked);
+    void _openMapRadioClicked(bool checked);
 
 private:
     MainWindow*         _mainWindow;

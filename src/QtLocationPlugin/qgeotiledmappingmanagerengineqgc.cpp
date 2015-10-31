@@ -46,13 +46,26 @@
 
 #include <QtLocation/private/qgeocameracapabilities_p.h>
 #include <QtLocation/private/qgeomaptype_p.h>
+#if QT_VERSION < 0x050500
 #include <QtLocation/private/qgeotiledmapdata_p.h>
+#else
+#include <QtLocation/private/qgeotiledmap_p.h>
+#endif
 #include <QDir>
 #include <QStandardPaths>
 
 #include "qgeotiledmappingmanagerengineqgc.h"
 #include "qgeotilefetcherqgc.h"
 #include "OpenPilotMaps.h"
+
+
+#if QT_VERSION >= 0x050500
+QGeoTiledMapQGC::QGeoTiledMapQGC(QGeoTiledMappingManagerEngine *engine, QObject *parent)
+    : QGeoTiledMap(engine, parent)
+{
+
+}
+#endif
 
 QGeoTiledMappingManagerEngineQGC::QGeoTiledMappingManagerEngineQGC(const QVariantMap &parameters, QGeoServiceProvider::Error *error, QString *errorString)
 :   QGeoTiledMappingManagerEngine()
@@ -70,7 +83,7 @@ QGeoTiledMappingManagerEngineQGC::QGeoTiledMappingManagerEngineQGC(const QVarian
     mapTypes << QGeoMapType(QGeoMapType::SatelliteMapDay,   tr("Google Satellite Map"),tr("Google satellite map"), false, false, OpenPilot::GoogleSatellite);
     mapTypes << QGeoMapType(QGeoMapType::TerrainMap,        tr("Google Terrain Map"),  tr("Google terrain map"),   false, false, OpenPilot::GoogleTerrain);
     // TODO:
-    // Proper hybrid maps requires collecting two separate bimaps and overlaying them.
+    // Proper google hybrid maps requires collecting two separate bimaps and overlaying them.
     //mapTypes << QGeoMapType(QGeoMapType::HybridMap,       tr("Google Hybrid Map"),   tr("Google hybrid map"),    false, false, OpenPilot::GoogleHybrid);
     // Bing
     mapTypes << QGeoMapType(QGeoMapType::StreetMap,         tr("Bing Street Map"),     tr("Bing street map"),      false, false, OpenPilot::BingMap);
@@ -87,13 +100,62 @@ QGeoTiledMappingManagerEngineQGC::QGeoTiledMappingManagerEngineQGC(const QVarian
         // QGC Default
         tileFetcher->setUserAgent("Mozilla/5.0 (Windows; U; Windows NT 6.0; en-US; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7");
 
+#if QT_VERSION >= 0x050500
+    _setCache(parameters);
+#endif
     setTileFetcher(tileFetcher);
 
-    QString cacheDir;
+    *error = QGeoServiceProvider::NoError;
+    errorString->clear();
+
+#if QT_VERSION >= 0x050500
+    if (parameters.contains(QStringLiteral("mapping.copyright")))
+        m_customCopyright = parameters.value(QStringLiteral("mapping.copyright")).toString().toLatin1();
+#endif
+}
+
+QGeoTiledMappingManagerEngineQGC::~QGeoTiledMappingManagerEngineQGC()
+{
+}
+
+#if QT_VERSION < 0x050500
+
+QGeoMapData *QGeoTiledMappingManagerEngineQGC::createMapData()
+{
+    return new QGeoTiledMapData(this, 0);
+}
+
+#else
+
+QGeoMap *QGeoTiledMappingManagerEngineQGC::createMap()
+{
+    return new QGeoTiledMapQGC(this);
+}
+
+QString QGeoTiledMappingManagerEngineQGC::customCopyright() const
+{
+    return m_customCopyright;
+}
+
+#endif
+
+#if QT_VERSION >= 0x050500
+void QGeoTiledMappingManagerEngineQGC::_setCache(const QVariantMap &parameters)
+{
+
+    QString cacheDir = QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + QLatin1String("/QGCMapCache");
+    //-- Clear old cache
+    QDir baseDir(cacheDir);
+    if (baseDir.exists()) {
+        const QStringList oldCacheFiles = baseDir.entryList(QDir::Files);
+        foreach (const QString& file, oldCacheFiles)
+            baseDir.remove(file);
+    }
+
     if (parameters.contains(QStringLiteral("mapping.cache.directory")))
         cacheDir = parameters.value(QStringLiteral("mapping.cache.directory")).toString();
     else {
-        cacheDir = QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + QLatin1String("/QGCMapCache");
+        cacheDir = QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + QLatin1String("/QGCMapCache55");
         if(!QDir::root().mkpath(cacheDir)) {
             qWarning() << "Could not create mapping disk cache directory: " << cacheDir;
             cacheDir = QDir::homePath() + QLatin1String("/.qgcmapscache/");
@@ -105,59 +167,46 @@ QGeoTiledMappingManagerEngineQGC::QGeoTiledMappingManagerEngineQGC(const QVarian
         qWarning() << "Could not create mapping disk cache directory: " << cacheDir;
         cacheDir.clear();
     }
-    //else {
-    //    qDebug() << "Mapping cache directory:" << cacheDir;
-    //}
-
-    QGeoTileCache *tileCache = createTileCacheWithDir(cacheDir);
-
-    int cacheLimit = 0;
-    if (parameters.contains(QStringLiteral("mapping.cache.disk.size"))) {
-      bool ok = false;
-      cacheLimit = parameters.value(QStringLiteral("mapping.cache.disk.size")).toString().toInt(&ok);
-      if (!ok)
-          cacheLimit = 0;
+    else {
+        qDebug() << "Mapping cache directory:" << cacheDir;
     }
-    if(!cacheLimit)
-        // QGC Default
-        cacheLimit = 1024 * 1024 * 1024;
-    tileCache->setMaxDiskUsage(cacheLimit);
-    //qDebug() << "Disk caching limit:" << cacheLimit;
-
-    cacheLimit = 0;
-    if (parameters.contains(QStringLiteral("mapping.cache.memory.size"))) {
-      bool ok = false;
-      cacheLimit = parameters.value(QStringLiteral("mapping.cache.memory.size")).toString().toInt(&ok);
-      if (!ok)
-          cacheLimit = 0;
+    QGeoTileCache* pTileCache = createTileCacheWithDir(cacheDir);
+    if(pTileCache)
+    {
+        int cacheLimit = 0;
+        //-- Disk Cache
+        if (parameters.contains(QStringLiteral("mapping.cache.disk.size"))) {
+          bool ok = false;
+          cacheLimit = parameters.value(QStringLiteral("mapping.cache.disk.size")).toString().toInt(&ok);
+          if (!ok)
+              cacheLimit = 0;
+        }
+        if(!cacheLimit)
+        {
+#ifdef __mobile__
+            cacheLimit = 128 * 1024 * 1024;
+#else
+            cacheLimit = 1024 * 1024 * 1024;
+#endif
+        }
+        pTileCache->setMaxDiskUsage(cacheLimit);
+        //-- Memory Cache
+        cacheLimit = 0;
+        if (parameters.contains(QStringLiteral("mapping.cache.memory.size"))) {
+          bool ok = false;
+          cacheLimit = parameters.value(QStringLiteral("mapping.cache.memory.size")).toString().toInt(&ok);
+          if (!ok)
+              cacheLimit = 0;
+        }
+        if(!cacheLimit)
+        {
+#ifdef __mobile__
+            cacheLimit = 16 * 1024 * 1024;
+#else
+            cacheLimit = 128 * 1024 * 1024;
+#endif
+        }
+        pTileCache->setMaxMemoryUsage(cacheLimit);
     }
-    if(!cacheLimit)
-        // QGC Default
-        cacheLimit = 10 * 1024 * 1024;
-    tileCache->setMaxMemoryUsage(cacheLimit);
-    //qDebug() << "Memory caching limit:" << cacheLimit;
-
-    cacheLimit = 0;
-    if (parameters.contains(QStringLiteral("mapping.cache.texture.size"))) {
-      bool ok = false;
-      cacheLimit = parameters.value(QStringLiteral("mapping.cache.texture.size")).toString().toInt(&ok);
-      if (!ok)
-          cacheLimit = 0;
-    }
-    if(!cacheLimit)
-        // QGC Default
-        cacheLimit = 10 * 1024 * 1024;
-    tileCache->setExtraTextureUsage(cacheLimit);
-
-    *error = QGeoServiceProvider::NoError;
-    errorString->clear();
 }
-
-QGeoTiledMappingManagerEngineQGC::~QGeoTiledMappingManagerEngineQGC()
-{
-}
-
-QGeoMapData *QGeoTiledMappingManagerEngineQGC::createMapData()
-{
-    return new QGeoTiledMapData(this, 0);
-}
+#endif

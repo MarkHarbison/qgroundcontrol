@@ -30,40 +30,15 @@
 
 #include <QDialog>
 #include <QThread>
+
 #include "UASInterface.h"
+#include "AutoPilotPlugin.h"
 
 namespace Ui {
 class QGCMapRCToParamDialog;
 }
 
 
-class ParamLoader : public QObject
-{
-    Q_OBJECT
-
-public:
-    ParamLoader(QString param_id, UASInterface *mav, QObject * parent = 0):
-    QObject(parent),
-    mav(mav),
-    paramMgr(mav->getParamManager()),
-    param_id(param_id),
-    param_received(false)
-{}
-
-public slots:
-    void load();
-    void handleParameterChanged(int uas, int component, QString parameterName, QVariant value);
-
-signals:
-    void paramLoaded(bool success, float value, QString message = "");
-    void correctParameterChanged();
-
-protected:
-    UASInterface *mav;
-    QGCUASParamManagerInterface* paramMgr;
-    QString param_id;
-    bool param_received;
-};
 
 class QGCMapRCToParamDialog : public QDialog
 {
@@ -71,23 +46,23 @@ class QGCMapRCToParamDialog : public QDialog
     QThread paramLoadThread;
 
 public:
-    explicit QGCMapRCToParamDialog(QString param_id,
-            UASInterface *mav, QWidget *parent = 0);
+    explicit QGCMapRCToParamDialog(QString param_id, UASInterface *mav, QWidget *parent = 0);
     ~QGCMapRCToParamDialog();
 
 signals:
     void mapRCToParamDialogResult(QString param_id, float scale, float value0,
             quint8 param_rc_channel_index, float valueMin, float valueMax);
-    void refreshParam();
 
 public slots:
     void accept();
-    void paramLoaded(bool success, float value, QString message);
 
 protected:
     // void showEvent(QShowEvent * event );
     QString param_id;
     UASInterface *mav;
+
+private slots:
+    void _parameterUpdated(QVariant value);
 
 private:
     Ui::QGCMapRCToParamDialog *ui;

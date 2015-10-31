@@ -26,6 +26,7 @@
 
 #include "QGCMapRCToParamDialog.h"
 #include "ui_QGCMapRCToParamDialog.h"
+#include "MultiVehicleManager.h"
 
 #include <QDebug>
 #include <QTimer>
@@ -33,29 +34,25 @@
 #include <QShowEvent>
 #include <QPushButton>
 
-QGCMapRCToParamDialog::QGCMapRCToParamDialog(QString param_id,
-        UASInterface *mav, QWidget *parent) :
+QGCMapRCToParamDialog::QGCMapRCToParamDialog(QString param_id, UASInterface *mav, QWidget *parent) :
     QDialog(parent),
     param_id(param_id),
     mav(mav),
     ui(new Ui::QGCMapRCToParamDialog)
 {
     ui->setupUi(this);
-
+    
     // only enable ok button when param was refreshed
     QPushButton *okButton = ui->buttonBox->button(QDialogButtonBox::Ok);
     okButton->setEnabled(false);
 
     ui->paramIdLabel->setText(param_id);
 
-    // Refresh the param
-    ParamLoader *paramLoader = new ParamLoader(param_id, mav);
-    paramLoader->moveToThread(&paramLoadThread);
-    connect(&paramLoadThread, &QThread::finished, paramLoader, &QObject::deleteLater);
-    connect(this, &QGCMapRCToParamDialog::refreshParam, paramLoader, &ParamLoader::load);
-    connect(paramLoader, &ParamLoader::paramLoaded, this, &QGCMapRCToParamDialog::paramLoaded);
-    paramLoadThread.start();
-    emit refreshParam();
+    // refresh the parameter from onboard to make sure the current value is used
+    AutoPilotPlugin* autopilot = MultiVehicleManager::instance()->getVehicleById(mav->getUASID())->autopilotPlugin();
+    Q_ASSERT(autopilot);
+    connect(autopilot->getParameterFact(FactSystem::defaultComponentId, param_id), &Fact::valueChanged, this, &QGCMapRCToParamDialog::_parameterUpdated);
+    autopilot->refreshParameter(FactSystem::defaultComponentId, param_id);
 }
 
 QGCMapRCToParamDialog::~QGCMapRCToParamDialog()
@@ -74,62 +71,15 @@ void QGCMapRCToParamDialog::accept() {
     QDialog::accept();
 }
 
-void QGCMapRCToParamDialog::paramLoaded(bool success, float value, QString message)
+void QGCMapRCToParamDialog::_parameterUpdated(QVariant value)
 {
-    paramLoadThread.quit();
-    if (success) {
-        ui->infoLabel->setText("Parameter value is up to date");
-        ui->value0DoubleSpinBox->setValue(value);
-        ui->value0DoubleSpinBox->setEnabled(true);
-
-        connect(this, &QGCMapRCToParamDialog::mapRCToParamDialogResult,
-                mav, &UASInterface::sendMapRCToParam);
-        QPushButton *okButton = ui->buttonBox->button(QDialogButtonBox::Ok);
-        okButton->setEnabled(true);
-    } else {
-        qDebug() << "Error while reading param" << param_id;
-        ui->infoLabel->setText("Error while refreshing param (" + message + ")");
-    }
-}
-
-void ParamLoader::load()
-{
-        // refresh the parameter from onboard to make sure the current value is used
-        paramMgr->requestParameterUpdate(paramMgr->getDefaultComponentId(), param_id);
-
-        // wait until parameter update is received
-        QEventLoop loop;
-        QTimer timer;
-        connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
-        timer.start(10 * 1e3);
-        // overloaded signal:
-        connect(mav, static_cast<void (UASInterface::*)(
-                    int, int, QString, QVariant)>(&UASInterface::parameterChanged),
-                this, &ParamLoader::handleParameterChanged);
-        connect(this, &ParamLoader::correctParameterChanged,
-                &loop, &QEventLoop::quit);
-        loop.exec();
-
-        if (!param_received == true) {
-            // timeout
-            emit paramLoaded(false, 0.0f, "Timeout");
-            return;
-        }
-
-        QVariant current_param_value;
-        bool got_param = paramMgr->getParameterValue(paramMgr->getDefaultComponentId(),
-                param_id, current_param_value);
-
-        QString message = got_param ? "" : "param manager Error";
-        emit paramLoaded(got_param, current_param_value.toFloat(), message);
-}
-
-void ParamLoader::handleParameterChanged(int uas, int component, QString parameterName, QVariant value)
-{
-    Q_UNUSED(component);
     Q_UNUSED(value);
-    if (uas == mav->getUASID() && parameterName == param_id) {
-        param_received = true;
-        emit correctParameterChanged();
-    }
+    
+    ui->infoLabel->setText("Parameter value is up to date");
+    ui->value0DoubleSpinBox->setValue(value.toDouble());
+    ui->value0DoubleSpinBox->setEnabled(true);
+    
+    connect(this, &QGCMapRCToParamDialog::mapRCToParamDialogResult, mav, &UASInterface::sendMapRCToParam);
+    QPushButton *okButton = ui->buttonBox->button(QDialogButtonBox::Ok);
+    okButton->setEnabled(true);
 }

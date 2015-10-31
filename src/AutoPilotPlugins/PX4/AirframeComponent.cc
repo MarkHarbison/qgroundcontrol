@@ -132,7 +132,7 @@ QString AirframeComponent::description(void) const
 
 QString AirframeComponent::iconResource(void) const
 {
-    return "AirframeComponentIcon.png";
+    return "/qmlimages/AirframeComponentIcon.png";
 }
 
 bool AirframeComponent::requiresSetup(void) const
@@ -142,7 +142,7 @@ bool AirframeComponent::requiresSetup(void) const
 
 bool AirframeComponent::setupComplete(void) const
 {
-    return _autopilot->getParameterFact("SYS_AUTOSTART")->value().toInt() != 0;
+    return _autopilot->getParameterFact(FactSystem::defaultComponentId, "SYS_AUTOSTART")->value().toInt() != 0;
 }
 
 QString AirframeComponent::setupStateDescription(void) const
@@ -171,16 +171,9 @@ QStringList AirframeComponent::paramFilterList(void) const
     return list;
 }
 
-QWidget* AirframeComponent::setupWidget(void) const
+QUrl AirframeComponent::setupSource(void) const
 {
-    QGCQmlWidgetHolder* holder = new QGCQmlWidgetHolder();
-    Q_CHECK_PTR(holder);
-    
-    holder->setAutoPilot(_autopilot);
-    
-    holder->setSource(QUrl::fromUserInput("qrc:/qml/AirframeComponent.qml"));
-    
-    return holder;
+    return QUrl::fromUserInput("qrc:/qml/AirframeComponent.qml");
 }
 
 QUrl AirframeComponent::summaryQmlSource(void) const

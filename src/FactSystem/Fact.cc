@@ -28,47 +28,90 @@
 
 #include <QtQml>
 
-Fact::Fact(int componentId, QString name, FactMetaData::ValueType_t type, QObject* parent) :
-    QObject(parent),
-    _name(name),
-    _componentId(componentId),
-    _type(type),
-    _metaData(NULL)
+Fact::Fact(QObject* parent)
+    : QObject(parent)
+    , _componentId(-1)
+    , _value(0)
+    , _type(FactMetaData::valueTypeInt32)
+    , _metaData(NULL)
+{    
+    FactMetaData* metaData = new FactMetaData(_type, this);
+    setMetaData(metaData);
+}
+
+Fact::Fact(int componentId, QString name, FactMetaData::ValueType_t type, QObject* parent)
+    : QObject(parent)
+    , _name(name)
+    , _componentId(componentId)
+    , _value(0)
+    , _type(type)
+    , _metaData(NULL)
 {
-    _value = 0;
+    FactMetaData* metaData = new FactMetaData(_type, this);
+    setMetaData(metaData);
+}
+
+Fact::Fact(const Fact& other, QObject* parent)
+    : QObject(parent)
+{
+    *this = other;
+}
+
+const Fact& Fact::operator=(const Fact& other)
+{
+    _name           = other._name;
+    _componentId    = other._componentId;
+    _value          = other._value;
+    _type           = other._type;
+    
+    if (_metaData && other._metaData) {
+        *_metaData = *other._metaData;
+    } else {
+        _metaData = NULL;
+    }
+    
+    return *this;
+}
+
+void Fact::forceSetValue(const QVariant& value)
+{
+    if (_metaData) {
+        QVariant    typedValue;
+        QString     errorString;
+        
+        if (_metaData->convertAndValidate(value, true /* convertOnly */, typedValue, errorString)) {
+            _value.setValue(typedValue);
+            emit valueChanged(_value);
+            emit _containerValueChanged(_value);
+        }
+    } else {
+        qWarning() << "Meta data pointer missing";
+    }
 }
 
 void Fact::setValue(const QVariant& value)
 {
-    switch (type()) {
-        case FactMetaData::valueTypeInt8:
-        case FactMetaData::valueTypeInt16:
-        case FactMetaData::valueTypeInt32:
-            _value.setValue(QVariant(value.toInt()));
-            break;
-
-        case FactMetaData::valueTypeUint8:
-        case FactMetaData::valueTypeUint16:
-        case FactMetaData::valueTypeUint32:
-            _value.setValue(value.toUInt());
-            break;
-
-        case FactMetaData::valueTypeFloat:
-            _value.setValue(value.toFloat());
-            break;
-
-        case FactMetaData::valueTypeDouble:
-            _value.setValue(value.toDouble());
-            break;
+    if (_metaData) {
+        QVariant    typedValue;
+        QString     errorString;
+        
+        if (_metaData->convertAndValidate(value, true /* convertOnly */, typedValue, errorString)) {
+            if (typedValue != _value) {
+                _value.setValue(typedValue);
+                emit valueChanged(_value);
+                emit _containerValueChanged(_value);
+            }
+        }
+    } else {
+        qWarning() << "Meta data pointer missing";
     }
-    emit valueChanged(_value);
-    emit _containerValueChanged(_value);
 }
 
 void Fact::_containerSetValue(const QVariant& value)
 {
     _value = value;
     emit valueChanged(_value);
+    emit vehicleUpdated(_value);
 }
 
 QString Fact::name(void) const
@@ -88,57 +131,130 @@ QVariant Fact::value(void) const
 
 QString Fact::valueString(void) const
 {
-    return _value.toString();
-}
+    QString valueString;
 
-QVariant Fact::defaultValue(void)
-{
-    Q_ASSERT(_metaData);
-    if (!_metaData->defaultValueAvailable()) {
-        qDebug() << "Access to unavailable default value";
+    switch (type()) {
+        case FactMetaData::valueTypeFloat:
+            qDebug() << name() << value() << decimalPlaces();
+            valueString = QString("%1").arg(value().toFloat(), 0, 'g', decimalPlaces());
+            break;
+        case FactMetaData::valueTypeDouble:
+            valueString = QString("%1").arg(value().toDouble(), 0, 'g', decimalPlaces());
+            break;
+        default:
+            valueString = value().toString();
+            break;
     }
-    return _metaData->defaultValue();
+
+    return valueString;
 }
 
-FactMetaData::ValueType_t Fact::type(void)
+QVariant Fact::defaultValue(void) const
+{
+    if (_metaData) {
+        if (!_metaData->defaultValueAvailable()) {
+            qDebug() << "Access to unavailable default value";
+        }
+        return _metaData->defaultValue();
+    } else {
+        qWarning() << "Meta data pointer missing";
+        return QVariant(0);
+    }
+}
+
+FactMetaData::ValueType_t Fact::type(void) const
 {
     return _type;
 }
 
-QString Fact::shortDescription(void)
+QString Fact::shortDescription(void) const
 {
-    Q_ASSERT(_metaData);
-    return _metaData->shortDescription();
+    if (_metaData) {
+        return _metaData->shortDescription();
+    } else {
+        qWarning() << "Meta data pointer missing";
+        return QString();
+    }
 }
 
-QString Fact::longDescription(void)
+QString Fact::longDescription(void) const
 {
-    Q_ASSERT(_metaData);
-    return _metaData->longDescription();
+    if (_metaData) {
+        return _metaData->longDescription();
+    } else {
+        qWarning() << "Meta data pointer missing";
+        return QString();
+    }
 }
 
-QString Fact::units(void)
+QString Fact::units(void) const
 {
-    Q_ASSERT(_metaData);
-    return _metaData->units();
+    if (_metaData) {
+        return _metaData->units();
+    } else {
+        qWarning() << "Meta data pointer missing";
+        return QString();
+    }
 }
 
-QVariant Fact::min(void)
+QVariant Fact::min(void) const
 {
-    Q_ASSERT(_metaData);
-    return _metaData->min();
+    if (_metaData) {
+        return _metaData->min();
+    } else {
+        qWarning() << "Meta data pointer missing";
+        return QVariant(0);
+    }
 }
 
-QVariant Fact::max(void)
+QVariant Fact::max(void) const
 {
-    Q_ASSERT(_metaData);
-    return _metaData->max();
+    if (_metaData) {
+        return _metaData->max();
+    } else {
+        qWarning() << "Meta data pointer missing";
+        return QVariant(0);
+    }
 }
 
-QString Fact::group(void)
+bool Fact::minIsDefaultForType(void) const
 {
-    Q_ASSERT(_metaData);
-    return _metaData->group();
+    if (_metaData) {
+        return _metaData->minIsDefaultForType();
+    } else {
+        qWarning() << "Meta data pointer missing";
+        return false;
+    }
+}
+
+bool Fact::maxIsDefaultForType(void) const
+{
+    if (_metaData) {
+        return _metaData->maxIsDefaultForType();
+    } else {
+        qWarning() << "Meta data pointer missing";
+        return false;
+    }
+}
+
+int Fact::decimalPlaces(void) const
+{
+    if (_metaData) {
+        return _metaData->decimalPlaces();
+    } else {
+        qWarning() << "Meta data pointer missing";
+        return FactMetaData::defaultDecimalPlaces;
+    }
+}
+
+QString Fact::group(void) const
+{
+    if (_metaData) {
+        return _metaData->group();
+    } else {
+        qWarning() << "Meta data pointer missing";
+        return QString();
+    }
 }
 
 void Fact::setMetaData(FactMetaData* metaData)
@@ -146,18 +262,42 @@ void Fact::setMetaData(FactMetaData* metaData)
     _metaData = metaData;
 }
 
-bool Fact::valueEqualsDefault(void)
+bool Fact::valueEqualsDefault(void) const
 {
-    Q_ASSERT(_metaData);
-    if (_metaData->defaultValueAvailable()) {
-        return _metaData->defaultValue() == value();
+    if (_metaData) {
+        if (_metaData->defaultValueAvailable()) {
+            return _metaData->defaultValue() == value();
+        } else {
+            return false;
+        }
     } else {
+        qWarning() << "Meta data pointer missing";
         return false;
     }
 }
 
-bool Fact::defaultValueAvailable(void)
+bool Fact::defaultValueAvailable(void) const
 {
-    Q_ASSERT(_metaData);
-    return _metaData->defaultValueAvailable();
+    if (_metaData) {
+        return _metaData->defaultValueAvailable();
+    } else {
+        qWarning() << "Meta data pointer missing";
+        return false;
+    }
+}
+
+QString Fact::validate(const QString& value, bool convertOnly)
+{
+    if (_metaData) {
+        
+        QVariant    typedValue;
+        QString     errorString;
+        
+        _metaData->convertAndValidate(value, convertOnly, typedValue, errorString);
+        
+        return errorString;
+    } else {
+        qWarning() << "Meta data pointer missing";
+        return QString("Internal error: Meta data pointer missing");
+    }
 }

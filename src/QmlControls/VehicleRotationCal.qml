@@ -42,7 +42,6 @@ Rectangle {
     property var imageSource: ""
 
     property var __qgcPal: QGCPalette { colorGroupEnabled: enabled }
-    property ScreenTools __screenTools: ScreenTools { }
 
     width:  200
     height: 200
@@ -71,10 +70,9 @@ Rectangle {
             height:                 parent.height
             horizontalAlignment:    Text.AlignHCenter
             verticalAlignment:      Text.AlignBottom
-            font.pointSize:         __screenTools.fontPointFactor * (25);
+            font.pixelSize:         ScreenTools.mediumFontPixelSize
             font.bold:              true
             color:                  "black"
-
             text: parent.calText
         }
         QGCLabel {
@@ -82,9 +80,8 @@ Rectangle {
             height:                 parent.height
             horizontalAlignment:    Text.AlignHCenter
             verticalAlignment:      Text.AlignBottom
-            font.pointSize:         __screenTools.fontPointFactor * (25);
+            font.pixelSize:         ScreenTools.mediumFontPixelSize
             color:                  calInProgress ? "yellow" : "white"
-
             text: parent.calText
         }
     }

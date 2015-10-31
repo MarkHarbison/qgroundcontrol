@@ -28,27 +28,38 @@ This file is part of the QGROUNDCONTROL project
  *
  */
 
+#include <QtGlobal>
 #include <QApplication>
 #include <QSslSocket>
+#include <QProcessEnvironment>
+
+#ifndef __mobile__
+    #include <QSerialPortInfo>
+#endif
 
 #include "QGCApplication.h"
 #include "MainWindow.h"
-#include "configuration.h"
+
 #ifdef QT_DEBUG
-#ifndef __android__
-#include "UnitTest.h"
+    #ifndef __mobile__
+        #include "UnitTest.h"
+    #endif
+    #include "CmdLineOptParser.h"
+    #ifdef Q_OS_WIN
+        #include <crtdbg.h>
+    #endif
 #endif
-#include "CmdLineOptParser.h"
-#ifdef Q_OS_WIN
-#include <crtdbg.h>
-#endif
-#endif
+
+#include <iostream>
 
 /* SDL does ugly things to main() */
 #ifdef main
 #undef main
 #endif
 
+#ifndef __mobile__
+Q_DECLARE_METATYPE(QSerialPortInfo)
+#endif
 
 #ifdef Q_OS_WIN
 
@@ -75,6 +86,25 @@ int WindowsCrtReportHook(int reportType, char* message, int* returnValue)
 
 #endif
 
+#ifdef __android__
+#include <jni.h>
+#include "qserialport.h"
+
+jint JNI_OnLoad(JavaVM* vm, void* reserved)
+{
+    Q_UNUSED(reserved);
+
+    JNIEnv* env;
+    if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
+        return -1;
+    }
+
+    QSerialPort::setNativeMethods();
+
+    return JNI_VERSION_1_6;
+}
+#endif
+
 /**
  * @brief Starts the application
  *
@@ -87,9 +117,11 @@ int main(int argc, char *argv[])
 {
 
 #ifdef Q_OS_MAC
+#ifndef __ios__
     // Prevent Apple's app nap from screwing us over
     // tip: the domain can be cross-checked on the command line with <defaults domains>
     QProcess::execute("defaults write org.qgroundcontrol.qgroundcontrol NSAppSleepDisabled -bool YES");
+#endif
 #endif
 
     // install the message handler
@@ -101,8 +133,14 @@ int main(int argc, char *argv[])
     // that we use these types in signals, and without calling qRegisterMetaType we can't queue
     // these signals. In general we don't queue these signals, but we do what the warning says
     // anyway to silence the debug output.
+#ifndef __ios__
     qRegisterMetaType<QSerialPort::SerialPortError>();
+#endif
     qRegisterMetaType<QAbstractSocket::SocketError>();
+#ifndef __mobile__
+    qRegisterMetaType<QSerialPortInfo>();
+#endif
+    
     // We statically link to the google QtLocation plugin
 
 #ifdef Q_OS_WIN
@@ -120,9 +158,10 @@ int main(int argc, char *argv[])
 
     bool quietWindowsAsserts = false;   // Don't let asserts pop dialog boxes
 
+    QString unitTestOptions;
     CmdLineOpt_t rgCmdLineOptions[] = {
-        { "--unittest",             &runUnitTests,          QString() },
-        { "--no-windows-assert-ui", &quietWindowsAsserts,   QString() },
+        { "--unittest",             &runUnitTests,          &unitTestOptions },
+        { "--no-windows-assert-ui", &quietWindowsAsserts,   NULL },
         // Add additional command line option flags here
     };
 
@@ -158,7 +197,7 @@ int main(int argc, char *argv[])
 
     int exitCode;
 
-#ifndef __android__
+#ifndef __mobile__
 #ifdef QT_DEBUG
     if (runUnitTests) {
         if (!app->_initForUnitTests()) {
@@ -166,7 +205,7 @@ int main(int argc, char *argv[])
         }
 
         // Run the test
-        int failures = UnitTest::run(rgCmdLineOptions[0].optionArg);
+        int failures = UnitTest::run(unitTestOptions);
         if (failures == 0) {
             qDebug() << "ALL TESTS PASSED";
         } else {

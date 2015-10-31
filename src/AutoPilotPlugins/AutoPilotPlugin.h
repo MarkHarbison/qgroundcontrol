@@ -32,10 +32,13 @@
 #include <QString>
 #include <QQmlContext>
 
-#include "UASInterface.h"
 #include "VehicleComponent.h"
 #include "FactSystem.h"
-#include "ParameterLoader.h"
+#include "Vehicle.h"
+
+class ParameterLoader;
+class Vehicle;
+class FirmwarePlugin;
 
 /// This is the base class for AutoPilot plugins
 ///
@@ -49,16 +52,23 @@ class AutoPilotPlugin : public QObject
     Q_OBJECT
 
 public:
-    AutoPilotPlugin(UASInterface* uas, QObject* parent);
+    AutoPilotPlugin(Vehicle* vehicle, QObject* parent);
+    ~AutoPilotPlugin();
     
-	/// true: plugin is ready for use, plugin should no longer be used
-	Q_PROPERTY(bool pluginReady READ pluginReady NOTIFY pluginReadyChanged)
+	/// true: parameters are ready for use
+	Q_PROPERTY(bool parametersReady READ parametersReady NOTIFY parametersReadyChanged)
+    
+    /// true: parameters are missing from firmware response, false: all parameters received from firmware
+    Q_PROPERTY(bool missingParameters READ missingParameters NOTIFY missingParametersChanged)
 	
     /// List of VehicleComponent objects
     Q_PROPERTY(QVariantList vehicleComponents READ vehicleComponents CONSTANT)
 
 	/// false: One or more vehicle components require setup
 	Q_PROPERTY(bool setupComplete READ setupComplete NOTIFY setupCompleteChanged)
+    
+    /// Reset all parameters to their default values
+    Q_INVOKABLE void resetAllParametersToDefaults(void);
 	
     /// Re-request the full set of parameters from the autopilot
 	Q_INVOKABLE void refreshAllParameters(void);
@@ -70,22 +80,22 @@ public:
 	Q_INVOKABLE void refreshParametersPrefix(int componentId, const QString& namePrefix);
     
 	/// Returns true if the specifed parameter exists from the default component
-	Q_INVOKABLE bool parameterExists(const QString& name);
+    Q_INVOKABLE bool parameterExists(int componentId, const QString& name);
 	
 	/// Returns all parameter names
-	/// FIXME: component id missing, generic to fact
-	QStringList parameterNames(void);
+	QStringList parameterNames(int componentId);
 	
 	/// Returns the specified parameter Fact from the default component
-	/// WARNING: Will assert if fact does not exists. If that possibility exists, check for existince first with
-	/// factExists.
-	Fact* getParameterFact(const QString& name);
+	/// WARNING: Returns a default Fact if parameter does not exists. If that possibility exists, check for existince first with
+	/// parameterExists.
+    Fact* getParameterFact(int componentId, const QString& name);
 	
 	/// Writes the parameter facts to the specified stream
 	void writeParametersToStream(QTextStream &stream);
 	
 	/// Reads the parameters from the stream and updates values
-	void readParametersFromStream(QTextStream &stream);
+    /// @return Errors during load. Empty string for no errors
+	QString readParametersFromStream(QTextStream &stream);
 	
     /// Returns true if the specifed fact exists
     Q_INVOKABLE bool factExists(FactSystem::Provider_t  provider,       ///< fact provider
@@ -107,32 +117,34 @@ public:
     static void clearStaticData(void);
 	
 	// Property accessors
-	bool pluginReady(void) { return _pluginReady; }
+	bool parametersReady(void) { return _parametersReady; }
+    bool missingParameters(void) { return _missingParameters; }
 	bool setupComplete(void);
 	
-    UASInterface* uas(void) { return _uas; }
+    Vehicle* vehicle(void) { return _vehicle; }
     
 signals:
-    void pluginReadyChanged(bool pluginReady);
+    void parametersReadyChanged(bool parametersReady);
+    void missingParametersChanged(bool missingParameters);
 	void setupCompleteChanged(bool setupComplete);
+    void parameterListProgress(float value);
 	
 protected:
     /// All access to AutoPilotPugin objects is through getInstanceForAutoPilotPlugin
     AutoPilotPlugin(QObject* parent = NULL) : QObject(parent) { }
     
-	/// Returns the ParameterLoader
-	virtual ParameterLoader* _getParameterLoader(void) = 0;
-	
-    UASInterface*   _uas;
-    bool            _pluginReady;
-	bool			_setupComplete;
+    Vehicle*        _vehicle;
+    FirmwarePlugin* _firmwarePlugin;
+    bool            _parametersReady;
+    bool            _missingParameters;
+    bool            _setupComplete;
 	
 private slots:
 	void _uasDisconnected(void);
-	void _pluginReadyChanged(bool pluginReady);
+	void _parametersReadyChanged(bool parametersReady);
 	
 private:
-	void _recalcSetupComplete(void);
+	void _recalcSetupComplete(void);    
 };
 
 #endif

@@ -32,30 +32,35 @@
 
 #include "AutoPilotPlugin.h"
 #include "UASInterface.h"
+#include "FactPanelController.h"
 
-class ParameterEditorController : public QObject
+class ParameterEditorController : public FactPanelController
 {
     Q_OBJECT
     
 public:
     ParameterEditorController(void);
+    ~ParameterEditorController();
 
     Q_PROPERTY(QStringList componentIds MEMBER _componentIds CONSTANT)
 	
 	Q_INVOKABLE QStringList getGroupsForComponent(int componentId);
-	Q_INVOKABLE QStringList getFactsForGroup(int componentId, QString group);
+	Q_INVOKABLE QStringList getParametersForGroup(int componentId, QString group);
+    Q_INVOKABLE QStringList searchParametersForComponent(int componentId, const QString& searchText, bool searchInName, bool searchInDescriptions);
 	
 	Q_INVOKABLE void clearRCToParam(void);
 	Q_INVOKABLE void saveToFile(void);
 	Q_INVOKABLE void loadFromFile(void);
 	Q_INVOKABLE void refresh(void);
+    Q_INVOKABLE void resetAllToDefaults(void);
 	Q_INVOKABLE void setRCToParam(const QString& paramName);
 	
 	QList<QObject*> model(void);
+    
+signals:
+    void showErrorMessage(const QString& errorMsg);
 	
 private:
-	UASInterface*		_uas;
-	AutoPilotPlugin*	_autopilot;
 	QStringList			_componentIds;
 };
 

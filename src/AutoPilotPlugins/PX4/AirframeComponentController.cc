@@ -27,7 +27,7 @@
 #include "AirframeComponentController.h"
 #include "AirframeComponentAirframes.h"
 #include "QGCMAVLink.h"
-#include "UASManager.h"
+#include "MultiVehicleManager.h"
 #include "AutoPilotPluginManager.h"
 #include "QGCApplication.h"
 #include "QGCMessageBox.h"
@@ -37,35 +37,41 @@
 
 bool AirframeComponentController::_typesRegistered = false;
 
-AirframeComponentController::AirframeComponentController(QObject* parent) :
-    QObject(parent),
-    _uas(NULL),
-    _autoPilotPlugin(NULL)
+AirframeComponentController::AirframeComponentController(void) :
+    _currentVehicleIndex(0),
+    _autostartId(0),
+    _showCustomConfigPanel(false)
 {
-    _uas = UASManager::instance()->getActiveUAS();
-    Q_ASSERT(_uas);
-    
-    _autoPilotPlugin = AutoPilotPluginManager::instance()->getInstanceForAutoPilotPlugin(_uas);
-    Q_ASSERT(_autoPilotPlugin);
-    Q_ASSERT(_autoPilotPlugin->pluginReady());
-
     if (!_typesRegistered) {
         _typesRegistered = true;
         qmlRegisterUncreatableType<AirframeType>("QGroundControl.Controllers", 1, 0, "AiframeType", "Can only reference AirframeType");
         qmlRegisterUncreatableType<Airframe>("QGroundControl.Controllers", 1, 0, "Aiframe", "Can only reference Airframe");
     }
     
+    QStringList usedParams;
+    usedParams << "SYS_AUTOSTART" << "SYS_AUTOCONFIG";
+    if (!_allParametersExists(FactSystem::defaultComponentId, usedParams)) {
+        return;
+    }
+    
     // Load up member variables
     
     bool autostartFound = false;
-    _autostartId = _autoPilotPlugin->getParameterFact("SYS_AUTOSTART")->value().toInt();
+    _autostartId = getParameterFact(FactSystem::defaultComponentId, "SYS_AUTOSTART")->value().toInt();
+
+
     
-    for (const AirframeComponentAirframes::AirframeType_t* pType=&AirframeComponentAirframes::rgAirframeTypes[0]; pType->name != NULL; pType++) {
+    for (int tindex = 0; tindex < AirframeComponentAirframes::get().count(); tindex++) {
+
+        const AirframeComponentAirframes::AirframeType_t* pType = AirframeComponentAirframes::get().values().at(tindex);
+
         AirframeType* airframeType = new AirframeType(pType->name, pType->imageResource, this);
         Q_CHECK_PTR(airframeType);
-        
-        int index = 0;
-        for (const AirframeComponentAirframes::AirframeInfo_t* pInfo=&pType->rgAirframeInfo[0]; pInfo->name != NULL; pInfo++) {
+
+        for (int index = 0; index < pType->rgAirframeInfo.count(); index++) {
+            const AirframeComponentAirframes::AirframeInfo_t* pInfo = pType->rgAirframeInfo.at(index);
+            Q_CHECK_PTR(pInfo);
+
             if (_autostartId == pInfo->autostartId) {
                 Q_ASSERT(!autostartFound);
                 autostartFound = true;
@@ -74,15 +80,15 @@ AirframeComponentController::AirframeComponentController(QObject* parent) :
                 _currentVehicleIndex = index;
             }
             airframeType->addAirframe(pInfo->name, pInfo->autostartId);
-            index++;
         }
         
         _airframeTypes.append(QVariant::fromValue(airframeType));
     }
     
-    // FIXME: Should be a user error
-    Q_UNUSED(autostartFound);
-    Q_ASSERT(autostartFound);
+    if (_autostartId != 0 && !autostartFound) {
+        _showCustomConfigPanel = true;
+        emit showCustomConfigPanelChanged(true);
+    }
 }
 
 AirframeComponentController::~AirframeComponentController()
@@ -92,48 +98,49 @@ AirframeComponentController::~AirframeComponentController()
 
 void AirframeComponentController::changeAutostart(void)
 {
-	if (UASManager::instance()->getUASList().count() > 1) {
+	if (MultiVehicleManager::instance()->vehicles().count() > 1) {
 		QGCMessageBox::warning("Airframe Config", "You cannot change airframe configuration while connected to multiple vehicles.");
 		return;
 	}
 	
-    _autoPilotPlugin->getParameterFact("SYS_AUTOSTART")->setValue(_autostartId);
-    _autoPilotPlugin->getParameterFact("SYS_AUTOCONFIG")->setValue(1);
-    
-    // Wait for the parameters to come back to us
-    
     qgcApp()->setOverrideCursor(Qt::WaitCursor);
     
-    int waitSeconds = 10;
-    bool success = false;
+    Fact* sysAutoStartFact  = getParameterFact(-1, "SYS_AUTOSTART");
+    Fact* sysAutoConfigFact = getParameterFact(-1, "SYS_AUTOCONFIG");
     
-    QGCUASParamManagerInterface* paramMgr = _uas->getParamManager();
+    // We need to wait for the vehicleUpdated signals to come back before we reboot
+    _waitParamWriteSignalCount = 0;
+    connect(sysAutoStartFact, &Fact::vehicleUpdated, this, &AirframeComponentController::_waitParamWriteSignal);
+    connect(sysAutoConfigFact, &Fact::vehicleUpdated, this, &AirframeComponentController::_waitParamWriteSignal);
+    
+    // We use forceSetValue to params are sent even if the previous value is that same as the new value
+    sysAutoStartFact->forceSetValue(_autostartId);
+    sysAutoConfigFact->forceSetValue(1);
+}
 
-    while (true) {
-        if (paramMgr->countPendingParams() == 0) {
-            success = true;
-            break;
-        }
-        qgcApp()->processEvents(QEventLoop::ExcludeUserInputEvents);
-        QGC::SLEEP::sleep(1);
-        if (--waitSeconds == 0) {
-            break;
-        }
+void AirframeComponentController::_waitParamWriteSignal(QVariant value)
+{
+    Q_UNUSED(value);
+    
+    _waitParamWriteSignalCount++;
+    if (_waitParamWriteSignalCount == 2) {
+        // Now that both params have made it to the vehicle we can reboot it. All these signals are flying
+        // around on the main thread, so we need to allow the stack to unwind back to the event loop before
+        // we reboot.
+        QTimer::singleShot(800, this, &AirframeComponentController::_rebootAfterStackUnwind);
     }
-    
-    
-    if (!success) {
-        qgcApp()->restoreOverrideCursor();
-        QGCMessageBox::critical("Airframe Config", "Airframe Config parameters not received back from vehicle. Config has not been set.");
-        return;
-    }
-    
+}
+
+void AirframeComponentController::_rebootAfterStackUnwind(void)
+{    
     _uas->executeCommand(MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN, 1, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0);
     qgcApp()->processEvents(QEventLoop::ExcludeUserInputEvents);
-    QGC::SLEEP::sleep(1);
-    qgcApp()->processEvents(QEventLoop::ExcludeUserInputEvents);
-    
-    qgcApp()->reconnectAfterWait(5);
+    for (unsigned i = 0; i < 2000; i++) {
+        QGC::SLEEP::usleep(500);
+        qgcApp()->processEvents(QEventLoop::ExcludeUserInputEvents);
+    }
+    LinkManager::instance()->disconnectAll();
+    qgcApp()->restoreOverrideCursor();
 }
 
 AirframeType::AirframeType(const QString& name, const QString& imageResource, QObject* parent) :
@@ -169,4 +176,3 @@ Airframe::~Airframe()
 {
     
 }
-

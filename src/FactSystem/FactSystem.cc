@@ -25,10 +25,7 @@
 ///     @author Don Gagne <don@thegagnes.com>
 
 #include "FactSystem.h"
-#include "UASManager.h"
-#include "QGCApplication.h"
-#include "VehicleComponent.h"
-#include "FactBinder.h"
+#include "FactPanelController.h"
 
 #include <QtQml>
 
@@ -39,8 +36,9 @@ const char* FactSystem::_factSystemQmlUri = "QGroundControl.FactSystem";
 FactSystem::FactSystem(QObject* parent) :
     QGCSingleton(parent)
 {
-    qmlRegisterType<FactBinder>(_factSystemQmlUri, 1, 0, "Fact");
-    qmlRegisterUncreatableType<VehicleComponent>(_factSystemQmlUri, 1, 0, "VehicleComponent", "Can only reference, cannot create");
+    
+    qmlRegisterType<Fact>(_factSystemQmlUri, 1, 0, "Fact");
+    qmlRegisterType<FactPanelController>(_factSystemQmlUri, 1, 0, "FactPanelController");
 }
 
 FactSystem::~FactSystem()

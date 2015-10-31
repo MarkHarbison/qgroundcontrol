@@ -48,6 +48,10 @@ QT_BEGIN_NAMESPACE
 static const char V_jniClassName[] {"org/qgroundcontrol/qgchelper/UsbDeviceJNI"};
 static const char V_TAG[] {"QGC_QSerialPortInfo"};
 
+extern void cleanJavaException();
+
+static int gErrorCount = 0;
+
 QList<QSerialPortInfo> availablePortsByFiltersOfDevices(bool &ok)
 {
     QList<QSerialPortInfo> serialPortInfoList;
@@ -59,9 +63,15 @@ QList<QSerialPortInfo> availablePortsByFiltersOfDevices(bool &ok)
         "()[Ljava/lang/String;");
     
     if (!resultL.isValid()) {
-        __android_log_print(ANDROID_LOG_ERROR, V_TAG, "Error from availableDevicesInfo");
+        //-- If 5 consecutive errors, ignore it.
+        if(gErrorCount < 5) {
+            gErrorCount++;
+            __android_log_print(ANDROID_LOG_ERROR, V_TAG, "Error from availableDevicesInfo");
+        }
         ok = false;
         return serialPortInfoList;
+    } else {
+        gErrorCount = 0;
     }
 
     QAndroidJniEnvironment envL;
@@ -117,22 +127,26 @@ QList<qint32> QSerialPortInfo::standardBaudRates()
 bool QSerialPortInfo::isBusy() const
 {
     QAndroidJniObject jstrL = QAndroidJniObject::fromString(d_ptr->portName);
+    cleanJavaException();
     jboolean resultL = QAndroidJniObject::callStaticMethod<jboolean>(
         V_jniClassName,
         "isDeviceNameOpen",
         "(Ljava/lang/String;)Z",
         jstrL.object<jstring>());
+    cleanJavaException();
     return resultL;
 }
 
 bool QSerialPortInfo::isValid() const
 {
     QAndroidJniObject jstrL = QAndroidJniObject::fromString(d_ptr->portName);
+    cleanJavaException();
     jboolean resultL = QAndroidJniObject::callStaticMethod<jboolean>(
         V_jniClassName,
         "isDeviceNameValid",
         "(Ljava/lang/String;)Z",
         jstrL.object<jstring>());
+    cleanJavaException();
     return resultL;
 }
 

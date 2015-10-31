@@ -26,11 +26,17 @@
 
 #include "QGCQmlWidgetHolder.h"
 
-QGCQmlWidgetHolder::QGCQmlWidgetHolder(QWidget *parent) :
-    QWidget(parent)
+QGCQmlWidgetHolder::QGCQmlWidgetHolder(const QString& title, QAction* action, QWidget *parent) :
+    QGCDockWidget(title, action, parent)
 {
     _ui.setupUi(this);
-    _ui.qmlWidget->setResizeMode(QQuickWidget::SizeRootObjectToView);
+    
+    layout()->setContentsMargins(0,0,0,0);
+
+    if (action) {
+        setWindowTitle(title);
+    }
+    setResizeMode(QQuickWidget::SizeRootObjectToView);
 }
 
 QGCQmlWidgetHolder::~QGCQmlWidgetHolder()
@@ -53,7 +59,17 @@ void QGCQmlWidgetHolder::setContextPropertyObject(const QString& name, QObject* 
     _ui.qmlWidget->rootContext()->setContextProperty(name, object);
 }
 
-QQmlContext* QGCQmlWidgetHolder::getRootContext()
+QQmlContext* QGCQmlWidgetHolder::getRootContext(void)
 {
     return _ui.qmlWidget->rootContext();
+}
+
+QQuickItem* QGCQmlWidgetHolder::getRootObject(void)
+{
+    return _ui.qmlWidget->rootObject();
+}
+
+void QGCQmlWidgetHolder::setResizeMode(QQuickWidget::ResizeMode resizeMode)
+{
+    _ui.qmlWidget->setResizeMode(resizeMode);
 }
